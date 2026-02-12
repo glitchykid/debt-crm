@@ -1,0 +1,11 @@
+.ui-stat-card__label {
+  color: var(--app-text-muted);
+  font-size: 13px;
+}
+
+.ui-stat-card__value {
+  margin-top: 6px;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--app-text-strong);
+}

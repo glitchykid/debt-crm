@@ -1,0 +1,10 @@
+.ui-btn-text-icon {
+  display: inline-flex;
+  align-items: center;
+}
+
+.ui-btn-text-icon__content {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}

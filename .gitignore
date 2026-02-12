@@ -38,3 +38,10 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
+# Python / Django
+__pycache__/
+*.py[cod]
+*.sqlite3
+.venv/
+backend/.env

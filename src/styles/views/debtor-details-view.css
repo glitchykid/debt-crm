@@ -1,0 +1,178 @@
+.mb-8 {
+  margin-bottom: 8px;
+}
+
+.mb-12 {
+  margin-bottom: 12px;
+}
+
+.debtor-title {
+  margin: 0 0 12px;
+  font-size: 24px;
+  line-height: 1.15;
+  color: var(--app-text-strong);
+}
+
+.incurred-date {
+  margin-bottom: 12px;
+  color: var(--app-text-muted);
+}
+
+.stat-card,
+.section-card {
+  margin-bottom: 12px;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+}
+
+.stat-label {
+  color: var(--app-text-muted);
+  font-size: 13px;
+}
+
+.stat-value {
+  margin-top: 6px;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--app-text-strong);
+}
+
+.full-width {
+  width: 100%;
+}
+
+:deep(.payments-table .el-table__inner-wrapper) {
+  overflow-x: auto;
+}
+
+:deep(.payments-table .action-col .cell),
+:deep(.payments-table .action-col-header .cell) {
+  padding-left: 0;
+  padding-right: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.payments-mobile-list {
+  display: grid;
+  gap: 10px;
+}
+
+.payments-desktop-table {
+  display: none;
+}
+
+.payment-item-card {
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+}
+
+.payment-item-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.payment-item-row + .payment-item-row {
+  margin-top: 6px;
+}
+
+.payment-item-label {
+  color: var(--app-text-muted);
+}
+
+.payment-item-actions {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.section-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.payments-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.payments-card {
+  flex: 1 1 auto;
+}
+
+.payment-card {
+  width: 100%;
+  max-width: none;
+  align-self: stretch;
+}
+
+.payment-form {
+  width: 100%;
+}
+
+.payment-submit-btn {
+  width: 100%;
+}
+
+.payment-form :deep(.el-input-number) {
+  width: 100%;
+}
+
+.payment-form :deep(.el-date-editor.el-input),
+.payment-form :deep(.el-date-editor.el-input__wrapper) {
+  width: 100%;
+}
+
+.icon-only-action {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  padding: 0;
+}
+
+.icon-only-action-bordered {
+  border-width: 1px;
+}
+
+@media (min-width: 900px) {
+  .debtor-title {
+    font-size: 30px;
+    margin-bottom: 16px;
+  }
+
+  .mb-12 {
+    margin-bottom: 16px;
+  }
+
+  .stat-card,
+  .section-card {
+    margin-bottom: 0;
+  }
+
+  .stat-value {
+    font-size: 30px;
+  }
+
+  .payments-layout {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .payment-card {
+    max-width: 320px;
+    align-self: flex-end;
+  }
+
+  .payments-mobile-list {
+    display: none;
+  }
+
+  .payments-desktop-table {
+    display: block;
+  }
+}

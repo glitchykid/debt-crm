@@ -1,0 +1,244 @@
+.row-between {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.debtors-card {
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+}
+
+.panel-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--app-text-strong);
+}
+
+.toolbar {
+  display: flex;
+  width: 100%;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.toolbar-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.toolbar-group-secondary {
+  margin-left: 0;
+}
+
+.icon-action-btn {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  padding: 0;
+}
+
+.icon-only-action {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  padding: 0;
+}
+
+.icon-only-action-bordered {
+  border-width: 1px;
+}
+
+.toolbar :deep(.el-button) {
+  height: 34px;
+  margin-left: 0;
+}
+
+.mb-16 {
+  margin-bottom: 16px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.mobile-list {
+  display: grid;
+  gap: 10px;
+}
+
+.filters {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.debtors-skeleton {
+  display: grid;
+  gap: 12px;
+}
+
+.debtors-skeleton__line {
+  height: 22px;
+}
+
+.debtors-skeleton__line-short {
+  width: 38%;
+}
+
+.debtors-skeleton__filters {
+  height: 88px;
+}
+
+.debtors-skeleton__table {
+  height: 320px;
+}
+
+.filters-header {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.filters-body {
+  display: grid;
+  gap: 10px;
+}
+
+.search-status-row {
+  display: grid;
+  gap: 10px;
+}
+
+.search-input,
+.sort-select,
+.order-select,
+.page-size-select {
+  width: 100%;
+}
+
+.status-chips {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.status-chips :deep(.el-check-tag) {
+  display: inline-flex;
+  justify-content: center;
+  width: 100%;
+  margin: 0;
+}
+
+.sort-row {
+  display: grid;
+  gap: 8px;
+}
+
+.debtor-item {
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+}
+
+.debtor-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.mobile-select-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+
+.debtor-metrics {
+  display: grid;
+  gap: 4px;
+  margin: 10px 0;
+  color: var(--app-text-muted);
+}
+
+.desktop-table {
+  display: none;
+}
+
+.pagination {
+  margin-top: 12px;
+  justify-content: flex-end;
+}
+
+:deep(.desktop-table .el-table__body-wrapper .el-checkbox),
+:deep(.desktop-table .el-table__header-wrapper .el-checkbox) {
+  display: inline-flex;
+  justify-content: center;
+}
+
+:deep(.desktop-table .action-col .cell),
+:deep(.desktop-table .action-col-header .cell) {
+  padding-left: 0;
+  padding-right: 0;
+  display: flex;
+  justify-content: center;
+}
+
+@media (min-width: 900px) {
+  .row-between {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .toolbar {
+    width: auto;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .toolbar-group-secondary {
+    margin-left: 10px;
+  }
+
+  .mobile-list {
+    display: none;
+  }
+
+  .desktop-table {
+    display: block;
+  }
+
+  .filters-header {
+    display: none;
+  }
+
+  .search-status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .search-status-row .search-input {
+    width: min(420px, 42%);
+  }
+
+  .sort-row {
+    grid-template-columns: minmax(160px, 1fr) minmax(150px, 1fr) minmax(170px, 1fr) auto;
+  }
+
+  .status-chips {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    width: auto;
+  }
+
+  .status-chips :deep(.el-check-tag) {
+    width: auto;
+  }
+}
