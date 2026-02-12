@@ -26,6 +26,10 @@ Debt CRM - pet-проект CRM-системы для работы с должн
 - Pinia
 - Vue Router
 - Element Plus + `@element-plus/icons-vue`
+- Django 5 + Django REST Framework
+- PostgreSQL
+- Docker + Docker Compose
+- `django-cors-headers`
 - Vitest (unit-тесты)
 - ESLint + Prettier
 
@@ -122,6 +126,10 @@ It helps track debtors, calculate interest, record payments, and close debts.
 - Pinia
 - Vue Router
 - Element Plus + `@element-plus/icons-vue`
+- Django 5 + Django REST Framework
+- PostgreSQL
+- Docker + Docker Compose
+- `django-cors-headers`
 - Vitest (unit tests)
 - ESLint + Prettier
 
