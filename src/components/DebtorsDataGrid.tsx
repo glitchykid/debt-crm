@@ -56,12 +56,12 @@ export function DebtorsDataGrid({ refreshTrigger }: { refreshTrigger: number }) 
   };
 
   const columns: GridColDef<Debtor>[] = [
-    { field: "fullname", headerName: "Имя", width: 300, resizable: false },
-    { field: "status", headerName: "Статус", flex: 1, resizable: false },
-    { field: "last_payment_date", headerName: "Последний платёж", flex: 1, resizable: false },
-    { field: "next_payment_date", headerName: "Следующий платёж", flex: 1, resizable: false },
-    { field: "created_date", headerName: "Дата создания", flex: 1, resizable: false },
-    { field: "closed_date", headerName: "Дата закрытия", flex: 1, resizable: false },
+    { field: "fullname", headerName: "Имя", width: 300 },
+    { field: "status", headerName: "Статус", flex: 1 },
+    { field: "last_payment_date", headerName: "Последний платёж", flex: 1 },
+    { field: "next_payment_date", headerName: "Следующий платёж", flex: 1 },
+    { field: "created_date", headerName: "Дата создания", flex: 1 },
+    { field: "closed_date", headerName: "Дата закрытия", flex: 1 },
     {
       field: "actions",
       type: "actions",
@@ -84,6 +84,8 @@ export function DebtorsDataGrid({ refreshTrigger }: { refreshTrigger: number }) 
         loading={loading}
         rows={rows}
         columns={columns}
+        disableColumnMenu
+        disableColumnResize
         sx={{
           border: 0,
         }}

@@ -47,7 +47,16 @@ export function AddDebtorForm({
   return (
     <Box component="form" action={handleAction}>
       <Stack direction="row" spacing={2}>
-        <TextField label="ФИО" name="fullname" required />
+        <TextField
+          label="ФИО"
+          name="fullname"
+          required
+          slotProps={{
+            inputLabel: {
+              shrink: true,
+            },
+          }}
+        />
 
         <TextField
           select
@@ -73,13 +82,38 @@ export function AddDebtorForm({
           slotProps={{
             textField: {
               required: true,
+              InputLabelProps: {
+                shrink: true,
+              },
             },
           }}
         />
 
-        <DatePicker label="Дата закрытия" format="DD.MM.YYYY" name="closedDate" />
+        <DatePicker
+          label="Дата закрытия"
+          format="DD.MM.YYYY"
+          name="closedDate"
+          slotProps={{
+            textField: {
+              InputLabelProps: {
+                shrink: true,
+              },
+            },
+          }}
+        />
 
-        <DatePicker label="Последний платёж" format="DD.MM.YYYY" name="lastPaymentDate" />
+        <DatePicker
+          label="Последний платёж"
+          format="DD.MM.YYYY"
+          name="lastPaymentDate"
+          slotProps={{
+            textField: {
+              InputLabelProps: {
+                shrink: true,
+              },
+            },
+          }}
+        />
 
         <DatePicker
           label="Следующий платёж"
@@ -89,6 +123,9 @@ export function AddDebtorForm({
           slotProps={{
             textField: {
               required: true,
+              InputLabelProps: {
+                shrink: true,
+              },
             },
           }}
         />
