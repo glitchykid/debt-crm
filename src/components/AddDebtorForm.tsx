@@ -39,10 +39,10 @@ export function AddDebtorForm({
     onDebtorAddedAction();
   };
 
-    const handleCloseSnackbar = (event?: SyntheticEvent | Event, reason?: string) => {
-      if (reason === "clickaway") return;
-      setSnackbarOpen(false);
-    }
+  const handleCloseSnackbar = (event?: SyntheticEvent | Event, reason?: string) => {
+    if (reason === "clickaway") return;
+    setSnackbarOpen(false);
+  };
 
   return (
     <Box component="form" action={handleAction}>
@@ -98,15 +98,17 @@ export function AddDebtorForm({
         </Button>
       </Stack>
       <Snackbar
-      open={snackbarOpen}
-      autoHideDuration={4000}
-      onClose={handleCloseSnackbar}
-      anchorOrigin={{vertical: "bottom", horizontal: "right"}}>
-        <Alert
+        open={snackbarOpen}
+        autoHideDuration={4000}
         onClose={handleCloseSnackbar}
-        severity={snackbarSeverity}
-        variant="filled"
-        sx={{width: "100%"}}>
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={snackbarSeverity}
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
           {snackbarMessage}
         </Alert>
       </Snackbar>

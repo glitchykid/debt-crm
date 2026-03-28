@@ -1,6 +1,6 @@
 "use server";
 
-import { getAllDebtors, createDebtor } from "@/lib/db/queries/debtors";
+import { getAllDebtors, createDebtor, deleteDebtorById } from "@/lib/db/queries/debtors";
 
 export async function fetchDebtorsAction() {
   try {
@@ -25,9 +25,9 @@ export async function createDebtorAction(formData: FormData) {
   const rawNextPaymentDate = formData.get("nextPaymentDate") as string;
   const createdDate = formatToDBDate(rawCreatedDate);
   const nextPaymentDate = formatToDBDate(rawNextPaymentDate);
-  
+
   if (!fullname || !status || !createdDate || !nextPaymentDate) {
-    return {error: "Заполните все обязательные поля."};
+    return { error: "Заполните все обязательные поля." };
   }
 
   try {
@@ -42,6 +42,16 @@ export async function createDebtorAction(formData: FormData) {
     return { success: true };
   } catch (error) {
     console.error("Ошибка при добавлении должника:", error);
-    return {error:"Должник с таким именем уже существует."}
+    return { error: "Должник с таким именем уже существует." };
+  }
+}
+
+export async function deleteDebtorAction(id: number) {
+  try {
+    await deleteDebtorById(id);
+    return { success: true };
+  } catch (error) {
+    console.error("Ошибка при удалении должника:", error);
+    return { error: "Не удалось удалить должника" };
   }
 }
