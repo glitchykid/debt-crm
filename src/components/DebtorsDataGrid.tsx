@@ -1,18 +1,17 @@
 "use client";
 
-import { SyntheticEvent, useEffect, useState } from "react";
-import { DataGrid, GridColDef, GridActionsCellItem } from "@mui/x-data-grid";
-import { Box, Snackbar, Alert, IconButton } from "@mui/material";
+import { useEffect, useState } from "react";
+import { DataGrid, GridColDef, GridActionsCellItem, GridActionsCell } from "@mui/x-data-grid";
+import { Box } from "@mui/material";
 import { deleteDebtorAction, fetchDebtorsAction } from "@/actions/debtors";
 import { type Debtor } from "@/lib/db/schema";
 import DeleteIcon from "@mui/icons-material/Delete";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import { enqueueSnackbar } from "notistack";
 
 export function DebtorsDataGrid({ refreshTrigger }: { refreshTrigger: number }) {
   const [rows, setRows] = useState<Debtor[]>([]);
   const [loading, setLoading] = useState(true);
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">("success");
 
   const loadData = async () => {
     setLoading(true);
@@ -35,24 +34,31 @@ export function DebtorsDataGrid({ refreshTrigger }: { refreshTrigger: number }) 
     if (!isConfirmed) return;
 
     setLoading(true);
-    const result = await deleteDebtorAction(id);
-
-    if (result.error) {
-      setSnackbarMessage(result.error);
-      setSnackbarSeverity("error");
-      setSnackbarOpen(true);
-      setLoading(false);
-    } else {
-      setSnackbarMessage("Должник успешно удален!");
-      setSnackbarSeverity("success");
-      setSnackbarOpen(true);
+    try {
+      const result = await deleteDebtorAction(id);
+      if (result?.error) {
+        enqueueSnackbar(result.error, {
+          variant: "error",
+        });
+        return;
+      }
+      enqueueSnackbar("Должник успешно удалён!", {
+        variant: "success",
+      });
       await loadData();
+    } catch (error) {
+      enqueueSnackbar("Произошла системная ошибка сети", {
+        variant: "error",
+      });
+      console.log("Системная ошибка:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleCloseSnackbar = (event?: SyntheticEvent | Event, reason?: string) => {
-    if (reason === "clickaway") return;
-    setSnackbarOpen(false);
+  const handleOpenInNewClick = (id: number) => async () => {
+    const url = `/debtors/${id}`;
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const columns: GridColDef<Debtor>[] = [
@@ -70,9 +76,18 @@ export function DebtorsDataGrid({ refreshTrigger }: { refreshTrigger: number }) 
       sortable: false,
       filterable: false,
       renderCell: (params) => (
-        <IconButton aria-label="Удалить" color="error" onClick={handleDeleteClick(params.row.id)}>
-          <DeleteIcon />
-        </IconButton>
+        <GridActionsCell {...params}>
+          <GridActionsCellItem
+            icon={<OpenInNewIcon />}
+            label="Открыть"
+            onClick={handleOpenInNewClick(params.row.id)}
+          />
+          <GridActionsCellItem
+            icon={<DeleteIcon color="error" />}
+            label="Удалить"
+            onClick={handleDeleteClick(params.row.id)}
+          />
+        </GridActionsCell>
       ),
     },
   ];
@@ -90,21 +105,6 @@ export function DebtorsDataGrid({ refreshTrigger }: { refreshTrigger: number }) 
           border: 0,
         }}
       />
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={4000}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      >
-        <Alert
-          onClose={handleCloseSnackbar}
-          severity={snackbarSeverity}
-          variant="filled"
-          sx={{ width: "100%" }}
-        >
-          {snackbarMessage}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 }
