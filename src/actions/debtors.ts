@@ -42,7 +42,7 @@ export async function createDebtorAction(formData: FormData) {
     return { success: true };
   } catch (error) {
     console.error("Ошибка при добавлении должника:", error);
-    return { error: "Должник с таким именем уже существует." };
+    return { error: "Должник с таким ФИО уже существует" };
   }
 }
 
