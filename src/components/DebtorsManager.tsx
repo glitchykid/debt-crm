@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Container, Paper, Stack, Typography } from "@mui/material";
-import { AddDebtorForm } from "@/components/AddDebtorForm";
+import AddDebtorForm from "@/components/AddDebtorForm";
 import { DebtorsDataGrid } from "@/components/DebtorsDataGrid";
 
 export function DebtorsManager() {
