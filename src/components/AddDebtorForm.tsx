@@ -1,10 +1,10 @@
 "use client";
 
-import { useRef, useState, SyntheticEvent } from "react";
 import { createDebtorAction } from "@/actions/debtors";
-import { Box, Button, TextField, Stack, MenuItem, Snackbar, Alert } from "@mui/material";
+import { Box, Button, TextField, Stack, MenuItem } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers";
 import dayjs from "dayjs";
+import { useSnackbar } from "notistack";
 
 const STATUS_OPTIONS = [
   { value: "Активен", label: "Активен" },
@@ -13,35 +13,31 @@ const STATUS_OPTIONS = [
   { value: "Закрыт", label: "Закрыт" },
 ] as const;
 
-export function AddDebtorForm({
-  onDebtorAddedAction: onDebtorAddedAction,
+export default function AddDebtorForm({
+  onDebtorAddedAction,
 }: {
   onDebtorAddedAction: () => void;
 }) {
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">("success");
-  const formRef = useRef<HTMLFormElement>(null);
+  const { enqueueSnackbar } = useSnackbar();
   const handleAction = async (formData: FormData) => {
-    const result = await createDebtorAction(formData);
-    if (result?.error) {
-      setSnackbarMessage(result.error);
-      setSnackbarSeverity("error");
-      setSnackbarOpen(true);
-      return;
+    try {
+      const result = await createDebtorAction(formData);
+      if (result?.error) {
+        enqueueSnackbar(result.error, {
+          variant: "error",
+        });
+        return;
+      }
+      enqueueSnackbar("Должник успешно добавлен!", {
+        variant: "success",
+      });
+      onDebtorAddedAction();
+    } catch (error) {
+      enqueueSnackbar("Произошла системная ошибка сети", {
+        variant: "error",
+      });
+      console.error("Системная ошибка:", error);
     }
-
-    setSnackbarMessage("Должник успешно добавлен!");
-    setSnackbarSeverity("success");
-    setSnackbarOpen(true);
-
-    formRef.current?.reset();
-    onDebtorAddedAction();
-  };
-
-  const handleCloseSnackbar = (event?: SyntheticEvent | Event, reason?: string) => {
-    if (reason === "clickaway") return;
-    setSnackbarOpen(false);
   };
 
   return (
@@ -134,21 +130,6 @@ export function AddDebtorForm({
           Добавить
         </Button>
       </Stack>
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={4000}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      >
-        <Alert
-          onClose={handleCloseSnackbar}
-          severity={snackbarSeverity}
-          variant="filled"
-          sx={{ width: "100%" }}
-        >
-          {snackbarMessage}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 }
