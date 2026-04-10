@@ -23,21 +23,25 @@ export async function createDebtorAction(formData: FormData) {
   const status = formData.get("status") as string;
   const rawCreatedDate = formData.get("createdDate") as string;
   const rawNextPaymentDate = formData.get("nextPaymentDate") as string;
+  const principal = formData.get("principal") as string;
+
   const createdDate = formatToDBDate(rawCreatedDate);
   const nextPaymentDate = formatToDBDate(rawNextPaymentDate);
 
-  if (!fullname || !status || !createdDate || !nextPaymentDate) {
+  if (!fullname || !status || !createdDate || !nextPaymentDate || !principal) {
     return { error: "Заполните все обязательные поля." };
   }
 
   try {
     await createDebtor({
       fullname,
-      status: status,
+      status,
       created_date: createdDate,
       closed_date: null,
       last_payment_date: null,
       next_payment_date: nextPaymentDate,
+      principal,
+      interest: null,
     });
     return { success: true };
   } catch (error) {

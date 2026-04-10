@@ -93,7 +93,7 @@ export function DebtorsDataGrid({ refreshTrigger }: { refreshTrigger: number }) 
   ];
 
   return (
-    <Box style={{ height: "100%", width: "100%" }}>
+    <Box sx={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
       <DataGrid
         disableRowSelectionOnClick
         loading={loading}
@@ -101,9 +101,7 @@ export function DebtorsDataGrid({ refreshTrigger }: { refreshTrigger: number }) 
         columns={columns}
         disableColumnMenu
         disableColumnResize
-        sx={{
-          border: 0,
-        }}
+        sx={{ border: 0, flex: 1 }}
       />
     </Box>
   );

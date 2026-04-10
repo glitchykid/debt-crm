@@ -1,4 +1,5 @@
 "use client";
+
 import { createTheme } from "@mui/material/styles";
 import { ruRU } from "@mui/material/locale";
 import { ruRU as DGruRU } from "@mui/x-data-grid/locales";
@@ -10,33 +11,33 @@ const theme = createTheme(
       light: {
         palette: {
           background: {
-            default: "#f5f5f4",
-            paper: "#fafaf9",
+            default: "#f4f4f3",
+            paper: "#f9f9f8",
           },
           primary: {
-            main: "#57534e",
+            main: "#546e7a",
           },
           text: {
-            primary: "#292524",
-            secondary: "#78716c",
+            primary: "#1a2125",
+            secondary: "#6b7c84",
           },
-          divider: "#e7e5e4",
+          divider: "#dde0e1",
         },
       },
       dark: {
         palette: {
           background: {
-            default: "#1c1917",
-            paper: "#292524",
+            default: "#111416",
+            paper: "#1a1f22",
           },
           primary: {
-            main: "#a8a29e",
+            main: "#78969f",
           },
           text: {
-            primary: "#f5f5f4",
-            secondary: "#a8a29e",
+            primary: "#cdd2d4",
+            secondary: "#7d8f95",
           },
-          divider: "#44403c",
+          divider: "#252c2f",
         },
       },
     },
@@ -44,7 +45,7 @@ const theme = createTheme(
       fontFamily: "var(--font-jost), Arial, sans-serif",
     },
     shape: {
-      borderRadius: 8,
+      borderRadius: 0,
     },
     components: {
       MuiButton: {
@@ -63,7 +64,6 @@ const theme = createTheme(
         styleOverrides: {
           root: {
             backgroundImage: "none",
-            boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)",
           },
         },
       },

@@ -5,6 +5,7 @@ import { Box, Button, TextField, Stack, MenuItem } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers";
 import dayjs from "dayjs";
 import { useSnackbar } from "notistack";
+import { KeyboardEvent } from "react";
 
 const STATUS_OPTIONS = [
   { value: "Активен", label: "Активен" },
@@ -40,6 +41,13 @@ export default function AddDebtorForm({
     }
   };
 
+  const allowDecimalOnly = (e: KeyboardEvent<HTMLInputElement>) => {
+    const allowed = ["Backspace", "Delete", "Tab", "ArrowLeft", "ArrowRight", ".", ","];
+    if (!allowed.includes(e.key) && isNaN(Number(e.key))) {
+      e.preventDefault();
+    }
+  };
+
   return (
     <Box component="form" action={handleAction}>
       <Stack direction="row" spacing={2}>
@@ -50,6 +58,37 @@ export default function AddDebtorForm({
           slotProps={{
             inputLabel: {
               shrink: true,
+            },
+          }}
+        />
+
+        <TextField
+          label="Основная сумма"
+          name="principal"
+          required
+          slotProps={{
+            inputLabel: {
+              shrink: true,
+            },
+            htmlInput: {
+              inputMode: "decimal",
+              pattern: "[0-9]*\\.?[0-9]{0,2}",
+              onKeyDown: allowDecimalOnly,
+            },
+          }}
+        />
+
+        <TextField
+          label="Проценты"
+          name="interest"
+          slotProps={{
+            inputLabel: {
+              shrink: true,
+            },
+            htmlInput: {
+              inputMode: "decimal",
+              pattern: "[0-9]*\\.?[0-9]{0,2}",
+              onKeyDown: allowDecimalOnly,
             },
           }}
         />

@@ -1,4 +1,4 @@
-import { date, integer, pgTable, varchar } from "drizzle-orm/pg-core";
+import { date, integer, pgTable, varchar, numeric } from "drizzle-orm/pg-core";
 
 export const debtorsTable = pgTable("debtors", {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -8,6 +8,8 @@ export const debtorsTable = pgTable("debtors", {
   closed_date: date("closed_date", { mode: "string" }),
   last_payment_date: date("last_payment_date", { mode: "string" }),
   next_payment_date: date("next_payment_date", { mode: "string" }).notNull(),
+  principal: numeric({ precision: 12, scale: 2 }).notNull(),
+  interest: numeric({ precision: 5, scale: 2 }),
 });
 
 export type InsertDebtor = typeof debtorsTable.$inferInsert;
