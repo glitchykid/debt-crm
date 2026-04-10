@@ -1,27 +1,15 @@
 import { db } from "@/lib/db";
-import { debtorsTable, type InsertDebtor, type Debtor } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { debtorsTable, paymentsTable, type InsertDebtor, type Debtor, type Payment } from "@/lib/db/schema";
+import { eq, desc } from "drizzle-orm";
 import { neon } from "@neondatabase/serverless";
 
-/**
- * Получаем всех должников.
- * Делаем raw SELECT чтобы устойчиво обрабатывать ситуацию когда
- * колонка accrued_interest ещё не добавлена в БД (миграция не применена).
- */
 export async function getAllDebtors(): Promise<Debtor[]> {
   const sql = neon(process.env.DATABASE_URL!);
-
   const rows = await sql`
     SELECT
-      id,
-      fullname,
-      status,
-      created_date,
-      closed_date,
-      last_payment_date,
-      next_payment_date,
-      principal,
-      interest,
+      id, fullname, status,
+      created_date, closed_date, last_payment_date, next_payment_date,
+      principal, interest,
       CASE
         WHEN EXISTS (
           SELECT 1 FROM information_schema.columns
@@ -33,7 +21,6 @@ export async function getAllDebtors(): Promise<Debtor[]> {
     FROM debtors
     ORDER BY id DESC
   `;
-
   return rows as unknown as Debtor[];
 }
 
@@ -46,7 +33,6 @@ export async function getDebtorById(id: number) {
 }
 
 export async function createDebtor(data: InsertDebtor) {
-  // Если колонка accrued_interest не существует — вставляем без неё
   const sql = neon(process.env.DATABASE_URL!);
 
   const hasColumn = await sql`
@@ -56,16 +42,35 @@ export async function createDebtor(data: InsertDebtor) {
   `;
 
   if (hasColumn.length === 0) {
-    // Вставляем без accrued_interest
     const { accrued_interest, ...rest } = data;
-    const [newDebtor] = await db.insert(debtorsTable).values(rest as InsertDebtor).returning();
-    return newDebtor;
+    const [d] = await db.insert(debtorsTable).values(rest as InsertDebtor).returning();
+    return d;
   }
 
-  const [newDebtor] = await db.insert(debtorsTable).values(data).returning();
-  return newDebtor;
+  const [d] = await db.insert(debtorsTable).values(data).returning();
+  return d;
 }
 
 export async function deleteDebtorById(id: number) {
   await db.delete(debtorsTable).where(eq(debtorsTable.id, id));
+}
+
+export async function getPaymentsByDebtorId(debtorId: number): Promise<Payment[]> {
+  return db
+    .select()
+    .from(paymentsTable)
+    .where(eq(paymentsTable.debtor_id, debtorId))
+    .orderBy(desc(paymentsTable.paid_at));
+}
+
+export async function addPayment(data: { debtor_id: number; amount: number; note?: string }) {
+  const [payment] = await db
+    .insert(paymentsTable)
+    .values({
+      debtor_id: data.debtor_id,
+      amount: String(data.amount),
+      note: data.note ?? null,
+    })
+    .returning();
+  return payment;
 }

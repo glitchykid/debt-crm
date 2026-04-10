@@ -1,5 +1,5 @@
 import { DebtorInfo } from "@/components/DebtorInfo";
-import { fetchDebtorByIdAction } from "@/actions/debtors";
+import { fetchDebtorByIdAction, fetchPaymentsAction } from "@/actions/debtors";
 import { notFound } from "next/navigation";
 
 export default async function DebtorPage({
@@ -11,12 +11,16 @@ export default async function DebtorPage({
   const numericId = parseInt(id, 10);
   if (isNaN(numericId)) notFound();
 
-  const debtor = await fetchDebtorByIdAction(numericId);
+  const [debtor, payments] = await Promise.all([
+    fetchDebtorByIdAction(numericId),
+    fetchPaymentsAction(numericId),
+  ]);
+
   if (!debtor) notFound();
 
   return (
     <div style={{ flex: 1, overflowY: "auto" }}>
-      <DebtorInfo debtor={debtor} />
+      <DebtorInfo debtor={debtor} payments={payments} />
     </div>
   );
 }

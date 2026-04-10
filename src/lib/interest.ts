@@ -1,23 +1,25 @@
 /**
- * Утилиты расчёта простых процентов.
- * Ставка хранится как % в ДЕНЬ (поле interest в БД).
- * Формула: сумма_процентов = principal × (rate / 100) × days
+ * Логика начисления простых процентов.
+ * Ставка — % в ДЕНЬ (поле interest в БД).
  *
- * В расчётах учитываем accrued_interest — перенесённые проценты из прошлых периодов.
+ * Правило округления:
+ *   Проценты за день = Math.floor(principal × rate / 100)
+ *   Только целые рубли — копеек нет.
+ *   Аккумуляция: за N дней = dailyRub × N
  */
 
-/** Процентов за 1 день, ₽ */
-export function dailyInterestAmount(principal: number, dailyRatePct: number): number {
+/** Процентов за 1 день — целые рубли (без копеек) */
+export function dailyInterestRub(principal: number, dailyRatePct: number): number {
   if (!dailyRatePct || !principal) return 0;
-  return principal * (dailyRatePct / 100);
+  return Math.floor(principal * (dailyRatePct / 100));
 }
 
-/** Накопленные проценты за N дней, ₽ (без учёта перенесённых) */
+/** Накопленные проценты за N дней — целые рубли */
 export function accruedInterest(principal: number, dailyRatePct: number, days: number): number {
-  return dailyInterestAmount(principal, dailyRatePct) * Math.max(0, days);
+  return dailyInterestRub(principal, dailyRatePct) * Math.max(0, days);
 }
 
-/** Итого (основной долг + накопленные проценты + перенесённые %), ₽ */
+/** Итого = долг + перенесённые % + накопленные за N дней */
 export function totalDebt(
   principal: number,
   dailyRatePct: number,
@@ -28,8 +30,9 @@ export function totalDebt(
 }
 
 /**
- * После платежа: сначала гасятся проценты (накопленные + перенесённые),
- * затем основной долг.
+ * Расчёт после платежа.
+ * Проценты гасятся первыми, затем основной долг.
+ * Всё в целых рублях.
  */
 export function afterPayment(
   principal: number,
@@ -37,18 +40,35 @@ export function afterPayment(
   days: number,
   payment: number,
   storedAccrued = 0,
-): { newPrincipal: number; remainder: number; totalAccrued: number } {
+): {
+  newPrincipal: number;
+  remainder: number;
+  totalAccrued: number;
+  paidAccrued: number;
+  paidPrincipal: number;
+} {
   const totalAccrued = storedAccrued + accruedInterest(principal, dailyRatePct, days);
   const total = principal + totalAccrued;
+
+  // Платёж не может превышать долг
   const paid = Math.min(payment, total);
-  const leftover = Math.max(0, total - paid);
+
+  // Сначала гасим проценты
+  const paidAccrued = Math.min(paid, totalAccrued);
+  const paidPrincipal = paid - paidAccrued;
+  const newPrincipal = Math.max(0, principal - paidPrincipal);
   const remainder = Math.max(0, payment - total);
-  return { newPrincipal: leftover, remainder, totalAccrued };
+
+  return { newPrincipal, remainder, totalAccrued, paidAccrued, paidPrincipal };
 }
 
 /**
- * Минимальная доплата δ такая, что ежедневные проценты от нового остатка
- * дают целые копейки (нет дробей < 0.01 коп).
+ * Минимальная доплата δ (в рублях, шаг 1 руб) такая, что
+ * Math.floor(newPrincipal × rate/100) не изменится после δ доплаты.
+ * Т.к. мы уже работаем в целых рублях, дробей копеек нет — функция
+ * проверяет, можно ли уменьшить остаток до суммы кратной 100/rate.
+ *
+ * Возвращает null если доплата не нужна.
  */
 export function suggestRoundUp(
   principal: number,
@@ -58,27 +78,50 @@ export function suggestRoundUp(
   storedAccrued = 0,
 ): number | null {
   if (!dailyRatePct) return null;
-  const totalAccrued = storedAccrued + accruedInterest(principal, dailyRatePct, days);
-  const total = principal + totalAccrued;
-  if (currentPayment >= total) return null;
 
-  const remaining = total - currentPayment;
+  const { newPrincipal } = afterPayment(principal, dailyRatePct, days, currentPayment, storedAccrued);
+  if (newPrincipal <= 0) return null;
 
-  for (let delta100 = 0; delta100 <= 20000; delta100++) {
-    const delta = delta100 / 100;
-    const newPrincipal = remaining - delta;
-    if (newPrincipal < 0) break;
-    const dailyKopecks = newPrincipal * (dailyRatePct / 100) * 100;
-    if (Math.abs(dailyKopecks - Math.round(dailyKopecks)) < 0.0001) {
-      return delta > 0 ? delta : null;
+  const currentDaily = dailyInterestRub(newPrincipal, dailyRatePct);
+  // Ищем минимальный δ >= 1 руб такой, что daily уменьшится
+  // (т.е. новый остаток даст меньше рублей в день)
+  for (let delta = 1; delta <= 1000; delta++) {
+    const reduced = newPrincipal - delta;
+    if (reduced < 0) break;
+    if (dailyInterestRub(reduced, dailyRatePct) < currentDaily) {
+      return delta;
     }
   }
   return null;
 }
 
+/** Форматирование суммы в рублях без копеек */
+export function fmtRub(n: number): string {
+  return Math.floor(n).toLocaleString("ru-RU") + " ₽";
+}
+
+/** Форматирование суммы с копейками (для отображения основного долга) */
 export function fmtMoney(n: number): string {
   return n.toLocaleString("ru-RU", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+/** Русское название дня недели */
+const DAYS_RU = ["воскресенье", "понедельник", "вторник", "среду", "четверг", "пятницу", "субботу"];
+
+export function nextPaymentDayLabel(dateStr: string | null | undefined): string {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  d.setHours(0, 0, 0, 0);
+  const diff = Math.round((d.getTime() - today.getTime()) / 86400000);
+  const dayName = DAYS_RU[d.getDay()];
+  if (diff === 0) return "сегодня";
+  if (diff === 1) return "завтра";
+  if (diff === -1) return "вчера";
+  if (diff > 0) return `через ${diff} дн. (${dayName})`;
+  return `${Math.abs(diff)} дн. назад (${dayName})`;
 }
