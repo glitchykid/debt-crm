@@ -7,59 +7,47 @@ import dayjs from "dayjs";
 import { useSnackbar } from "notistack";
 import { KeyboardEvent } from "react";
 
-const STATUS_OPTIONS = [
+export const STATUS_OPTIONS = [
   { value: "Активен", label: "Активен" },
   { value: "Передан в суд", label: "Передан в суд" },
   { value: "Просрочен", label: "Просрочка" },
   { value: "Закрыт", label: "Закрыт" },
 ] as const;
 
+function allowDecimalOnly(e: KeyboardEvent<HTMLInputElement>) {
+  const allowed = ["Backspace", "Delete", "Tab", "ArrowLeft", "ArrowRight", ".", ","];
+  if (!allowed.includes(e.key) && isNaN(Number(e.key))) {
+    e.preventDefault();
+  }
+}
+
+const shrinkLabel = { inputLabel: { shrink: true } };
+
 export default function AddDebtorForm({
-  onDebtorAddedAction,
+  onSuccess,
 }: {
-  onDebtorAddedAction: () => void;
+  onSuccess: () => void;
 }) {
   const { enqueueSnackbar } = useSnackbar();
-  const handleAction = async (formData: FormData) => {
-    try {
-      const result = await createDebtorAction(formData);
-      if (result?.error) {
-        enqueueSnackbar(result.error, {
-          variant: "error",
-        });
-        return;
-      }
-      enqueueSnackbar("Должник успешно добавлен!", {
-        variant: "success",
-      });
-      onDebtorAddedAction();
-    } catch (error) {
-      enqueueSnackbar("Произошла системная ошибка сети", {
-        variant: "error",
-      });
-      console.error("Системная ошибка:", error);
-    }
-  };
 
-  const allowDecimalOnly = (e: KeyboardEvent<HTMLInputElement>) => {
-    const allowed = ["Backspace", "Delete", "Tab", "ArrowLeft", "ArrowRight", ".", ","];
-    if (!allowed.includes(e.key) && isNaN(Number(e.key))) {
-      e.preventDefault();
+  const handleAction = async (formData: FormData) => {
+    const result = await createDebtorAction(formData);
+    if (!result.success) {
+      enqueueSnackbar(result.error, { variant: "error" });
+      return;
     }
+    enqueueSnackbar("Должник успешно добавлен!", { variant: "success" });
+    onSuccess();
   };
 
   return (
     <Box component="form" action={handleAction}>
-      <Stack direction="row" spacing={2}>
+      <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
         <TextField
           label="ФИО"
           name="fullname"
           required
-          slotProps={{
-            inputLabel: {
-              shrink: true,
-            },
-          }}
+          slotProps={shrinkLabel}
         />
 
         <TextField
@@ -67,9 +55,7 @@ export default function AddDebtorForm({
           name="principal"
           required
           slotProps={{
-            inputLabel: {
-              shrink: true,
-            },
+            ...shrinkLabel,
             htmlInput: {
               inputMode: "decimal",
               pattern: "[0-9]*\\.?[0-9]{0,2}",
@@ -82,9 +68,7 @@ export default function AddDebtorForm({
           label="Проценты"
           name="interest"
           slotProps={{
-            inputLabel: {
-              shrink: true,
-            },
+            ...shrinkLabel,
             htmlInput: {
               inputMode: "decimal",
               pattern: "[0-9]*\\.?[0-9]{0,2}",
@@ -114,40 +98,21 @@ export default function AddDebtorForm({
           defaultValue={dayjs()}
           disableFuture
           name="createdDate"
-          slotProps={{
-            textField: {
-              required: true,
-              InputLabelProps: {
-                shrink: true,
-              },
-            },
-          }}
+          slotProps={{ textField: { required: true, InputLabelProps: { shrink: true } } }}
         />
 
         <DatePicker
           label="Дата закрытия"
           format="DD.MM.YYYY"
           name="closedDate"
-          slotProps={{
-            textField: {
-              InputLabelProps: {
-                shrink: true,
-              },
-            },
-          }}
+          slotProps={{ textField: { InputLabelProps: { shrink: true } } }}
         />
 
         <DatePicker
           label="Последний платёж"
           format="DD.MM.YYYY"
           name="lastPaymentDate"
-          slotProps={{
-            textField: {
-              InputLabelProps: {
-                shrink: true,
-              },
-            },
-          }}
+          slotProps={{ textField: { InputLabelProps: { shrink: true } } }}
         />
 
         <DatePicker
@@ -155,14 +120,7 @@ export default function AddDebtorForm({
           format="DD.MM.YYYY"
           name="nextPaymentDate"
           defaultValue={dayjs().add(32, "day")}
-          slotProps={{
-            textField: {
-              required: true,
-              InputLabelProps: {
-                shrink: true,
-              },
-            },
-          }}
+          slotProps={{ textField: { required: true, InputLabelProps: { shrink: true } } }}
         />
 
         <Button type="submit" variant="contained" disableElevation>

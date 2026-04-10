@@ -1,21 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useRef } from "react";
 import { Container, Paper, Stack, Typography, Box } from "@mui/material";
 import AddDebtorForm from "@/components/AddDebtorForm";
 import { DebtorsDataGrid } from "@/components/DebtorsDataGrid";
 
+/**
+ * DebtorsManager — оркестрирует форму добавления и таблицу.
+ * После успешного добавления вызывает reload() через ref на DataGrid.
+ */
 export function DebtorsManager() {
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const reloadRef = useRef<(() => void) | null>(null);
 
-  const handleDebtorAdded = () => {
-    setRefreshTrigger((prev) => prev + 1);
+  const handleSuccess = () => {
+    reloadRef.current?.();
   };
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
       <Container
-        maxWidth="lg"
+        maxWidth="xl"
         sx={{
           py: 4,
           flex: 1,
@@ -28,14 +32,16 @@ export function DebtorsManager() {
           <Typography variant="h4" component="h1" fontWeight="bold">
             Управление должниками
           </Typography>
+
           <Paper variant="outlined" sx={{ p: 3 }}>
             <Typography variant="h6" sx={{ mb: 3 }}>
               Добавить нового должника
             </Typography>
-            <AddDebtorForm onDebtorAddedAction={handleDebtorAdded} />
+            <AddDebtorForm onSuccess={handleSuccess} />
           </Paper>
-          <Paper variant="outlined" sx={{ flex: 1, minHeight: 0 }}>
-            <DebtorsDataGrid refreshTrigger={refreshTrigger} />
+
+          <Paper variant="outlined" sx={{ flex: 1, minHeight: 400 }}>
+            <DebtorsDataGrid onReloadRef={reloadRef} />
           </Paper>
         </Stack>
       </Container>

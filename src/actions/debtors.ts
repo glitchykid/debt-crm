@@ -1,61 +1,90 @@
 "use server";
 
-import { getAllDebtors, createDebtor, deleteDebtorById } from "@/lib/db/queries/debtors";
+import { revalidatePath } from "next/cache";
+import {
+  getAllDebtors,
+  createDebtor,
+  deleteDebtorById,
+  getDebtorById,
+} from "@/lib/db/queries/debtors";
+import { createDebtorSchema, toDbDate } from "@/lib/validators/debtor";
+
+export type ActionResult<T = undefined> =
+  | { success: true; data?: T }
+  | { success: false; error: string };
 
 export async function fetchDebtorsAction() {
   try {
     return await getAllDebtors();
-  } catch (error) {
-    console.error("Ошибка при получении должников:", error);
+  } catch {
     throw new Error("Не удалось получить данные");
   }
 }
 
-function formatToDBDate(dateString: string | null): string {
-  if (!dateString) return "";
-  const parts = dateString.split(".");
-  if (parts.length !== 3) return dateString;
-  return `${parts[2]}-${parts[1]}-${parts[0]}`;
+export async function fetchDebtorByIdAction(id: number) {
+  try {
+    return await getDebtorById(id);
+  } catch {
+    throw new Error("Не удалось получить данные о должнике");
+  }
 }
 
-export async function createDebtorAction(formData: FormData) {
-  const fullname = formData.get("fullname") as string;
-  const status = formData.get("status") as string;
-  const rawCreatedDate = formData.get("createdDate") as string;
-  const rawNextPaymentDate = formData.get("nextPaymentDate") as string;
-  const principal = formData.get("principal") as string;
+export async function createDebtorAction(
+  formData: FormData,
+): Promise<ActionResult> {
+  const raw = {
+    fullname: formData.get("fullname"),
+    status: formData.get("status"),
+    createdDate: formData.get("createdDate"),
+    nextPaymentDate: formData.get("nextPaymentDate"),
+    principal: formData.get("principal"),
+    interest: formData.get("interest") ?? undefined,
+    closedDate: formData.get("closedDate") ?? undefined,
+    lastPaymentDate: formData.get("lastPaymentDate") ?? undefined,
+  };
 
-  const createdDate = formatToDBDate(rawCreatedDate);
-  const nextPaymentDate = formatToDBDate(rawNextPaymentDate);
-
-  if (!fullname || !status || !createdDate || !nextPaymentDate || !principal) {
-    return { error: "Заполните все обязательные поля." };
+  const parsed = createDebtorSchema.safeParse(raw);
+  if (!parsed.success) {
+    const message = parsed.error.errors[0]?.message ?? "Ошибка валидации";
+    return { success: false, error: message };
   }
+
+  const {
+    fullname,
+    status,
+    createdDate,
+    nextPaymentDate,
+    principal,
+    interest,
+    closedDate,
+    lastPaymentDate,
+  } = parsed.data;
 
   try {
     await createDebtor({
       fullname,
       status,
-      created_date: createdDate,
-      closed_date: null,
-      last_payment_date: null,
-      next_payment_date: nextPaymentDate,
+      created_date: toDbDate(createdDate),
+      next_payment_date: toDbDate(nextPaymentDate),
       principal,
-      interest: null,
+      interest: interest && interest !== "" ? interest : null,
+      closed_date: closedDate ? toDbDate(closedDate) : null,
+      last_payment_date: lastPaymentDate ? toDbDate(lastPaymentDate) : null,
     });
+
+    revalidatePath("/");
     return { success: true };
-  } catch (error) {
-    console.error("Ошибка при добавлении должника:", error);
-    return { error: "Должник с таким ФИО уже существует" };
+  } catch {
+    return { success: false, error: "Должник с таким ФИО уже существует" };
   }
 }
 
-export async function deleteDebtorAction(id: number) {
+export async function deleteDebtorAction(id: number): Promise<ActionResult> {
   try {
     await deleteDebtorById(id);
+    revalidatePath("/");
     return { success: true };
-  } catch (error) {
-    console.error("Ошибка при удалении должника:", error);
-    return { error: "Не удалось удалить должника" };
+  } catch {
+    return { success: false, error: "Не удалось удалить должника" };
   }
 }
