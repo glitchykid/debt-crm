@@ -1,22 +1,18 @@
 /**
  * Логика начисления простых процентов.
  * Ставка — % в ДЕНЬ (поле interest в БД).
- *
- * Правило округления:
- *   Проценты за день = Math.floor(principal × rate / 100)
- *   Только целые рубли — копеек нет.
- *   Аккумуляция: за N дней = dailyRub × N
+ * Формула: principal × rate / 100 — с копейками, точный расчёт.
  */
 
-/** Процентов за 1 день — целые рубли (без копеек) */
-export function dailyInterestRub(principal: number, dailyRatePct: number): number {
+/** Процентов за 1 день, ₽ с копейками */
+export function dailyInterestAmount(principal: number, dailyRatePct: number): number {
   if (!dailyRatePct || !principal) return 0;
-  return Math.floor(principal * (dailyRatePct / 100));
+  return principal * (dailyRatePct / 100);
 }
 
-/** Накопленные проценты за N дней — целые рубли */
+/** Накопленные проценты за N дней, ₽ с копейками */
 export function accruedInterest(principal: number, dailyRatePct: number, days: number): number {
-  return dailyInterestRub(principal, dailyRatePct) * Math.max(0, days);
+  return dailyInterestAmount(principal, dailyRatePct) * Math.max(0, days);
 }
 
 /** Итого = долг + перенесённые % + накопленные за N дней */
@@ -32,7 +28,6 @@ export function totalDebt(
 /**
  * Расчёт после платежа.
  * Проценты гасятся первыми, затем основной долг.
- * Всё в целых рублях.
  */
 export function afterPayment(
   principal: number,
@@ -49,63 +44,55 @@ export function afterPayment(
 } {
   const totalAccrued = storedAccrued + accruedInterest(principal, dailyRatePct, days);
   const total = principal + totalAccrued;
-
-  // Платёж не может превышать долг
   const paid = Math.min(payment, total);
-
-  // Сначала гасим проценты
   const paidAccrued = Math.min(paid, totalAccrued);
   const paidPrincipal = paid - paidAccrued;
   const newPrincipal = Math.max(0, principal - paidPrincipal);
   const remainder = Math.max(0, payment - total);
-
   return { newPrincipal, remainder, totalAccrued, paidAccrued, paidPrincipal };
 }
 
 /**
- * Минимальная доплата δ (в рублях, шаг 1 руб) такая, что
- * Math.floor(newPrincipal × rate/100) не изменится после δ доплаты.
- * Т.к. мы уже работаем в целых рублях, дробей копеек нет — функция
- * проверяет, можно ли уменьшить остаток до суммы кратной 100/rate.
+ * Минимальная доплата δ (в копейках, шаг 0.01 ₽) такая, что
+ * (newPrincipal - δ) × rate/100 — целое число рублей без копеек.
  *
- * Возвращает null если доплата не нужна.
+ * Т.е. ищем наименьший остаток долга ≤ newPrincipal, при котором
+ * daily interest кратен 1 ₽ (нет дробной части копеек).
+ *
+ * Возвращает { delta, roundedPrincipal } или null если уже ровно.
  */
-export function suggestRoundUp(
+export function calcRoundUpPayment(
   principal: number,
   dailyRatePct: number,
   days: number,
-  currentPayment: number,
+  payment: number,
   storedAccrued = 0,
-): number | null {
+): { delta: number; roundedPrincipal: number; roundedDaily: number } | null {
   if (!dailyRatePct) return null;
 
-  const { newPrincipal } = afterPayment(principal, dailyRatePct, days, currentPayment, storedAccrued);
+  const { newPrincipal } = afterPayment(principal, dailyRatePct, days, payment, storedAccrued);
   if (newPrincipal <= 0) return null;
 
-  const currentDaily = dailyInterestRub(newPrincipal, dailyRatePct);
-  // Ищем минимальный δ >= 1 руб такой, что daily уменьшится
-  // (т.е. новый остаток даст меньше рублей в день)
-  for (let delta = 1; delta <= 1000; delta++) {
+  const currentDaily = dailyInterestAmount(newPrincipal, dailyRatePct);
+  // Уже целый рубль?
+  if (Math.abs(currentDaily - Math.round(currentDaily)) < 0.0001) return null;
+
+  // Перебираем шагом 1 копейка: ищем минимальный delta >= 0.01
+  // при котором (newPrincipal - delta) * rate/100 — целое
+  for (let kopecks = 1; kopecks <= 1_000_000; kopecks++) {
+    const delta = kopecks / 100;
     const reduced = newPrincipal - delta;
     if (reduced < 0) break;
-    if (dailyInterestRub(reduced, dailyRatePct) < currentDaily) {
-      return delta;
+    const daily = reduced * (dailyRatePct / 100);
+    if (Math.abs(daily - Math.round(daily)) < 0.0001) {
+      return {
+        delta,
+        roundedPrincipal: reduced,
+        roundedDaily: Math.round(daily),
+      };
     }
   }
   return null;
-}
-
-/** Форматирование суммы в рублях без копеек */
-export function fmtRub(n: number): string {
-  return Math.floor(n).toLocaleString("ru-RU") + " ₽";
-}
-
-/** Форматирование суммы с копейками (для отображения основного долга) */
-export function fmtMoney(n: number): string {
-  return n.toLocaleString("ru-RU", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
 }
 
 /** Русское название дня недели */
@@ -124,4 +111,14 @@ export function nextPaymentDayLabel(dateStr: string | null | undefined): string 
   if (diff === -1) return "вчера";
   if (diff > 0) return `через ${diff} дн. (${dayName})`;
   return `${Math.abs(diff)} дн. назад (${dayName})`;
+}
+
+/** Форматирование с копейками */
+export function fmtMoney(n: number): string {
+  return n.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/** Форматирование без копеек (целые рубли) */
+export function fmtRub(n: number): string {
+  return Math.round(n).toLocaleString("ru-RU") + " ₽";
 }

@@ -24,11 +24,10 @@ import { useState, useMemo, useTransition } from "react";
 import {
   accruedInterest,
   totalDebt,
-  dailyInterestRub,
+  dailyInterestAmount,
   afterPayment,
-  suggestRoundUp,
+  calcRoundUpPayment,
   fmtMoney,
-  fmtRub,
   nextPaymentDayLabel,
 } from "@/lib/interest";
 import { addPaymentAction } from "@/actions/debtors";
@@ -112,30 +111,29 @@ export function DebtorInfo({ debtor, payments }: DebtorInfoProps) {
   const storedAccrued = parseFloat(debtor.accrued_interest ?? "0");
   const daysOpen = dayjs().diff(dayjs(debtor.created_date), "day");
 
-  const daily = dailyInterestRub(principal, dailyRate);
+  const daily = dailyInterestAmount(principal, dailyRate);
   const newlyAccrued = accruedInterest(principal, dailyRate, daysOpen);
   const totalAccrued = storedAccrued + newlyAccrued;
   const total = totalDebt(principal, dailyRate, daysOpen, storedAccrued);
-
-  // Через 32 дня от сегодня
   const in32 = principal + storedAccrued + daily * (daysOpen + 32);
-
-  // Следующий платёж — день недели
   const nextPaymentLabel = nextPaymentDayLabel(debtor.next_payment_date);
 
-  // Калькулятор
+  // Калькулятор — ввод в копейках-рублях как угодно
   const [paymentStr, setPaymentStr] = useState("");
   const [noteStr, setNoteStr] = useState("");
-  const payment = Math.floor(parseFloat(paymentStr) || 0); // платёж только целые рубли
+  const payment = parseFloat(paymentStr) || 0;
 
   const calc = useMemo(() => {
     if (payment <= 0) return null;
     const result = afterPayment(principal, dailyRate, daysOpen, payment, storedAccrued);
-    const newDaily = dailyInterestRub(result.newPrincipal, dailyRate);
-    const week = accruedInterest(result.newPrincipal, dailyRate, 7);
-    const month = accruedInterest(result.newPrincipal, dailyRate, 30);
-    const roundUp = suggestRoundUp(principal, dailyRate, daysOpen, payment, storedAccrued);
-    return { ...result, newDaily, week, month, roundUp };
+    const newDaily = dailyInterestAmount(result.newPrincipal, dailyRate);
+    const newAccrued7 = accruedInterest(result.newPrincipal, dailyRate, 7);
+    const newAccrued30 = accruedInterest(result.newPrincipal, dailyRate, 30);
+
+    // Считаем нужную доплату для ровных рублей в день
+    const roundUp = calcRoundUpPayment(principal, dailyRate, daysOpen, payment, storedAccrued);
+
+    return { ...result, newDaily, newAccrued7, newAccrued30, roundUp };
   }, [payment, principal, dailyRate, daysOpen, storedAccrued]);
 
   const handlePayment = () => {
@@ -146,7 +144,7 @@ export function DebtorInfo({ debtor, payments }: DebtorInfoProps) {
         enqueueSnackbar(result.error, { variant: "error" });
         return;
       }
-      enqueueSnackbar(`Платёж ${fmtRub(payment)} сохранён`, { variant: "success" });
+      enqueueSnackbar(`Платёж ${fmtMoney(payment)} ₽ сохранён`, { variant: "success" });
       setPaymentStr("");
       setNoteStr("");
       router.refresh();
@@ -192,28 +190,31 @@ export function DebtorInfo({ debtor, payments }: DebtorInfoProps) {
           )}
         </Paper>
 
-        {/* Финансы */}
+        {/* Финансы — всё с копейками */}
         <Paper variant="outlined" sx={{ px: 2, py: 1.5 }}>
           <SectionLabel>Расчёт на сегодня</SectionLabel>
           <Divider sx={{ mb: 0.5 }} />
           <Row label="Основной долг" value={`${fmtMoney(principal)} ₽`} />
           <Row label="Ставка" value={dailyRate > 0 ? `${dailyRate}% / день` : "—"} />
-          <Row label="% в день" value={dailyRate > 0 ? fmtRub(daily) : "—"} />
+          <Row
+            label="% в день"
+            value={dailyRate > 0 ? `${fmtMoney(daily)} ₽` : "—"}
+          />
           {storedAccrued > 0 && (
-            <Row label="Перенесённые %" value={fmtRub(storedAccrued)} />
+            <Row label="Перенесённые %" value={`${fmtMoney(storedAccrued)} ₽`} />
           )}
           <Row
             label={`Накоплено за ${daysOpen} дн.`}
-            value={dailyRate > 0 ? fmtRub(newlyAccrued) : "—"}
+            value={dailyRate > 0 ? `${fmtMoney(newlyAccrued)} ₽` : "—"}
           />
           {(storedAccrued > 0 || newlyAccrued > 0) && (
-            <Row label="Всего процентов" value={fmtRub(totalAccrued)} />
+            <Row label="Всего процентов" value={`${fmtMoney(totalAccrued)} ₽`} />
           )}
           <Divider sx={{ my: 0.5 }} />
-          <Row label="Итого (долг + %)" value={fmtRub(total)} bold accent />
+          <Row label="Итого (долг + %)" value={`${fmtMoney(total)} ₽`} bold accent />
           <Row
             label="Итого через 32 дня"
-            value={dailyRate > 0 ? fmtRub(in32) : fmtRub(principal)}
+            value={dailyRate > 0 ? `${fmtMoney(in32)} ₽` : `${fmtMoney(principal)} ₽`}
           />
         </Paper>
 
@@ -224,11 +225,11 @@ export function DebtorInfo({ debtor, payments }: DebtorInfoProps) {
 
           <Stack spacing={1} sx={{ mb: 1 }}>
             <TextField
-              label="Сумма, ₽ (целые рубли)"
+              label="Сумма платежа, ₽"
               value={paymentStr}
               onChange={(e) => {
-                const v = e.target.value.replace(/[^\d]/g, "");
-                setPaymentStr(v);
+                const v = e.target.value;
+                if (/^\d*\.?\d{0,2}$/.test(v)) setPaymentStr(v);
               }}
               size="small"
               fullWidth
@@ -236,7 +237,7 @@ export function DebtorInfo({ debtor, payments }: DebtorInfoProps) {
                 input: { endAdornment: <InputAdornment position="end">₽</InputAdornment> },
                 inputLabel: { shrink: true },
               }}
-              inputMode="numeric"
+              inputMode="decimal"
             />
             <TextField
               label="Комментарий (необязательно)"
@@ -250,52 +251,63 @@ export function DebtorInfo({ debtor, payments }: DebtorInfoProps) {
 
           {calc && (
             <Stack spacing={1} sx={{ mb: 1.5 }}>
+              {/* Разбивка платежа */}
               <Stack>
-                <Row label="Погашено процентов" value={fmtRub(calc.paidAccrued)} />
-                <Row label="Погашено долга" value={fmtRub(calc.paidPrincipal)} />
+                <Row label="Погашено процентов" value={`${fmtMoney(calc.paidAccrued)} ₽`} />
+                <Row label="Погашено долга" value={`${fmtMoney(calc.paidPrincipal)} ₽`} />
                 <Row
                   label="Остаток долга"
-                  value={fmtRub(calc.newPrincipal)}
+                  value={`${fmtMoney(calc.newPrincipal)} ₽`}
                   bold={calc.newPrincipal === 0}
                   accent={calc.newPrincipal === 0}
                 />
                 {calc.remainder > 0 && (
-                  <Row label="Переплата" value={fmtRub(calc.remainder)} />
+                  <Row label="Переплата" value={`${fmtMoney(calc.remainder)} ₽`} />
                 )}
               </Stack>
 
+              {/* Проценты на остаток */}
               {calc.newPrincipal > 0 && dailyRate > 0 && (
                 <>
                   <Divider />
-                  <Stack>
+                  <Stack spacing={0}>
                     <Typography variant="caption" color="text.secondary" fontWeight={600} mb={0.25}>
                       Проценты на остаток
                     </Typography>
-                    <Row label="В день" value={fmtRub(calc.newDaily)} />
-                    <Row label="За 7 дней" value={fmtRub(calc.week)} />
-                    <Row label="За 30 дней" value={fmtRub(calc.month)} />
+                    <Row label="% в день" value={`${fmtMoney(calc.newDaily)} ₽`} />
+                    <Row label="За 7 дней" value={`${fmtMoney(calc.newAccrued7)} ₽`} />
+                    <Row label="За 30 дней" value={`${fmtMoney(calc.newAccrued30)} ₽`} />
                   </Stack>
                 </>
               )}
 
-              {calc.roundUp !== null && calc.roundUp > 0 && (
+              {/* Подсказка: доплата для ровных рублей в день */}
+              {calc.roundUp && (
                 <>
                   <Divider />
                   <Alert
                     severity="info"
-                    sx={{ py: 0.25, fontSize: 12 }}
+                    sx={{ py: 0.5, fontSize: 12, alignItems: "flex-start" }}
                     action={
                       <Button
                         size="small"
                         variant="outlined"
-                        sx={{ fontSize: 11, whiteSpace: "nowrap" }}
-                        onClick={() => setPaymentStr(String(payment + calc.roundUp!))}
+                        sx={{ fontSize: 11, whiteSpace: "nowrap", mt: 0.25 }}
+                        onClick={() =>
+                          setPaymentStr(
+                            (payment + calc.roundUp!.delta).toFixed(2),
+                          )
+                        }
                       >
-                        +{calc.roundUp} ₽
+                        Доплатить {fmtMoney(calc.roundUp.delta)} ₽
                       </Button>
                     }
                   >
-                    Доплатите <strong>{calc.roundUp} ₽</strong> — % в день снизятся на 1 ₽.
+                    <strong>% в день содержат копейки.</strong>
+                    <br />
+                    Доплатите <strong>{fmtMoney(calc.roundUp.delta)} ₽</strong> — остаток
+                    станет <strong>{fmtMoney(calc.roundUp.roundedPrincipal)} ₽</strong>,
+                    % в день = <strong>{calc.roundUp.roundedDaily} ₽ ровно</strong>.
                   </Alert>
                 </>
               )}
@@ -320,10 +332,14 @@ export function DebtorInfo({ debtor, payments }: DebtorInfoProps) {
         </Paper>
 
         {/* История платежей */}
-        {payments.length > 0 && (
-          <Paper variant="outlined" sx={{ px: 2, py: 1.5 }}>
-            <SectionLabel>История платежей</SectionLabel>
-            <Divider sx={{ mb: 0.5 }} />
+        <Paper variant="outlined" sx={{ px: 2, py: 1.5 }}>
+          <SectionLabel>История платежей</SectionLabel>
+          <Divider sx={{ mb: 0.5 }} />
+          {payments.length === 0 ? (
+            <Typography variant="body2" color="text.disabled" sx={{ py: 0.5 }}>
+              Платежей ещё не было
+            </Typography>
+          ) : (
             <Table size="small" sx={{ "& td, & th": { px: 0, py: 0.5, border: 0 } }}>
               <TableHead>
                 <TableRow>
@@ -352,7 +368,7 @@ export function DebtorInfo({ debtor, payments }: DebtorInfoProps) {
                     </TableCell>
                     <TableCell align="right">
                       <Typography variant="body2" fontWeight={600}>
-                        {fmtRub(parseFloat(p.amount))}
+                        {fmtMoney(parseFloat(p.amount))} ₽
                       </Typography>
                     </TableCell>
                     <TableCell>
@@ -364,14 +380,8 @@ export function DebtorInfo({ debtor, payments }: DebtorInfoProps) {
                 ))}
               </TableBody>
             </Table>
-          </Paper>
-        )}
-
-        {payments.length === 0 && (
-          <Typography variant="caption" color="text.disabled" textAlign="center" display="block">
-            Платежей ещё не было
-          </Typography>
-        )}
+          )}
+        </Paper>
       </Stack>
     </Box>
   );
