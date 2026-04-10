@@ -1,33 +1,38 @@
 import type { Metadata } from "next";
-import { Jost } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import { ReactNode } from "react";
 import { Providers } from "@/app/providers";
 import { InitColorSchemeScript } from "@mui/material";
 
-const jost = Jost({
-  variable: "--font-jost",
+// Inter — профессиональный нейтральный sans-serif, Perplexity/Linear/Vercel уровень
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["cyrillic", "latin"],
-  weight: ["300", "400", "500", "700"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+const mono = JetBrains_Mono({
+  variable: "--font-mono",
+  subsets: ["latin"],
+  weight: ["400", "500"],
   display: "swap",
 });
 
 export const metadata: Metadata = {
   title: "Debt CRM",
-  description: "",
+  description: "Управление долгами и процентами",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: ReactNode;
-}>) {
+}: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="ru" suppressHydrationWarning>
       <body
-        className={`${jost.variable} antialiased`}
+        className={`${inter.variable} ${mono.variable} antialiased`}
         style={{ margin: 0, height: "100dvh", display: "flex", flexDirection: "column" }}
       >
-        {/* colorSchemeSelector должен совпадать с theme.cssVariables.colorSchemeSelector */}
         <InitColorSchemeScript attribute="class" defaultMode="light" />
         <Providers>{children}</Providers>
       </body>

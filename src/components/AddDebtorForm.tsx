@@ -1,17 +1,18 @@
 "use client";
 
 import { createDebtorAction } from "@/actions/debtors";
-import { Box, Button, TextField, Stack, MenuItem } from "@mui/material";
+import { Box, Button, TextField, Stack, MenuItem, Typography } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers";
+import AddIcon from "@mui/icons-material/Add";
 import dayjs from "dayjs";
 import { useSnackbar } from "notistack";
 import { KeyboardEvent } from "react";
 
 export const STATUS_OPTIONS = [
-  { value: "Активен", label: "Активен" },
-  { value: "Передан в суд", label: "Передан в суд" },
-  { value: "Просрочен", label: "Просрочка" },
-  { value: "Закрыт", label: "Закрыт" },
+  { value: "Активен",        label: "Активен" },
+  { value: "Передан в суд",  label: "Передан в суд" },
+  { value: "Просрочен",      label: "Просрочен" },
+  { value: "Закрыт",         label: "Закрыт" },
 ] as const;
 
 function allowDecimalOnly(e: KeyboardEvent<HTMLInputElement>) {
@@ -23,6 +24,16 @@ const decimalSlot = {
   inputLabel: { shrink: true },
   htmlInput: { inputMode: "decimal" as const, onKeyDown: allowDecimalOnly },
 };
+
+const datePickerSlot = (label: string, required = false, width = 140) => ({
+  textField: {
+    required,
+    size: "small" as const,
+    sx: { width },
+    slotProps: { inputLabel: { shrink: true } },
+    label,
+  },
+});
 
 export default function AddDebtorForm({ onSuccess }: { onSuccess: () => void }) {
   const { enqueueSnackbar } = useSnackbar();
@@ -39,17 +50,20 @@ export default function AddDebtorForm({ onSuccess }: { onSuccess: () => void }) 
 
   return (
     <Box component="form" action={handleAction}>
-      <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap alignItems="flex-start">
-        {/* ФИО — растягивается */}
+      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="flex-end">
+
+        {/* ФИО */}
         <TextField
           label="ФИО"
           name="fullname"
           required
           size="small"
+          placeholder="Иванов Иван Иванович"
           sx={{ minWidth: 200, flex: "2 1 200px" }}
           slotProps={{ inputLabel: { shrink: true } }}
         />
 
+        {/* Статус */}
         <TextField
           select
           label="Статус"
@@ -57,7 +71,7 @@ export default function AddDebtorForm({ onSuccess }: { onSuccess: () => void }) 
           defaultValue="Активен"
           required
           size="small"
-          sx={{ width: 140, flexShrink: 0 }}
+          sx={{ width: 136 }}
           slotProps={{ inputLabel: { shrink: true } }}
         >
           {STATUS_OPTIONS.map((o) => (
@@ -67,12 +81,13 @@ export default function AddDebtorForm({ onSuccess }: { onSuccess: () => void }) 
           ))}
         </TextField>
 
+        {/* Финансовые поля */}
         <TextField
           label="Долг, ₽"
           name="principal"
           required
           size="small"
-          sx={{ width: 130, flexShrink: 0 }}
+          sx={{ width: 120 }}
           slotProps={decimalSlot}
         />
 
@@ -80,7 +95,7 @@ export default function AddDebtorForm({ onSuccess }: { onSuccess: () => void }) 
           label="Накоп. %, ₽"
           name="accruedInterest"
           size="small"
-          sx={{ width: 120, flexShrink: 0 }}
+          sx={{ width: 110 }}
           slotProps={decimalSlot}
         />
 
@@ -89,19 +104,18 @@ export default function AddDebtorForm({ onSuccess }: { onSuccess: () => void }) 
           name="interest"
           required
           size="small"
-          sx={{ width: 120, flexShrink: 0 }}
+          sx={{ width: 118 }}
           slotProps={decimalSlot}
         />
 
+        {/* Даты */}
         <DatePicker
           label="Открыт"
           format="DD.MM.YYYY"
           defaultValue={dayjs()}
           disableFuture
           name="createdDate"
-          slotProps={{
-            textField: { required: true, size: "small", sx: { width: 148 }, InputLabelProps: { shrink: true } },
-          }}
+          slotProps={datePickerSlot("Открыт", true, 140)}
         />
 
         <DatePicker
@@ -109,30 +123,31 @@ export default function AddDebtorForm({ onSuccess }: { onSuccess: () => void }) 
           format="DD.MM.YYYY"
           name="nextPaymentDate"
           defaultValue={dayjs().add(32, "day")}
-          slotProps={{
-            textField: { required: true, size: "small", sx: { width: 148 }, InputLabelProps: { shrink: true } },
-          }}
+          slotProps={datePickerSlot("След. платёж", true, 140)}
         />
 
         <DatePicker
           label="Посл. платёж"
           format="DD.MM.YYYY"
           name="lastPaymentDate"
-          slotProps={{
-            textField: { size: "small", sx: { width: 148 }, InputLabelProps: { shrink: true } },
-          }}
+          slotProps={datePickerSlot("Посл. платёж", false, 140)}
         />
 
         <Button
           type="submit"
           variant="contained"
-          disableElevation
           size="small"
-          sx={{ height: 40, flexShrink: 0, alignSelf: "flex-start" }}
+          startIcon={<AddIcon sx={{ fontSize: "14px !important" }} />}
+          sx={{ height: 34, flexShrink: 0, alignSelf: "flex-end" }}
         >
           Добавить
         </Button>
       </Stack>
+
+      {/* Хинт для обязательных полей */}
+      <Typography variant="caption" color="text.disabled" sx={{ mt: 0.75, display: "block" }}>
+        * обязательные поля
+      </Typography>
     </Box>
   );
 }
