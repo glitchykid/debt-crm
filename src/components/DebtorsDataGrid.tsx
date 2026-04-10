@@ -10,8 +10,6 @@ import {
 import {
   DataGrid,
   GridColDef,
-  GridActionsCellItem,
-  GridActionsCell,
   GridRenderCellParams,
 } from "@mui/x-data-grid";
 import { Box, Chip, IconButton, Tooltip } from "@mui/material";
@@ -154,29 +152,29 @@ export function DebtorsDataGrid({ onReloadRef }: DebtorsDataGridProps) {
       width: 72,
       sortable: false,
       filterable: false,
-      renderCell: (params) => (
-        <GridActionsCell {...(params as Parameters<typeof GridActionsCell>[0])}>
-          <GridActionsCellItem
-            icon={
-              <Tooltip title="Открыть">
-                <OpenInNewIcon fontSize="small" sx={{ color: "text.secondary" }} />
-              </Tooltip>
-            }
-            label="Открыть"
-            onClick={() =>
-              window.open(`/debtors/${params.row.id}`, "_blank", "noopener,noreferrer")
-            }
-          />
-          <GridActionsCellItem
-            icon={
-              <Tooltip title="Удалить">
-                <DeleteIcon fontSize="small" sx={{ color: "error.main" }} />
-              </Tooltip>
-            }
-            label="Удалить"
-            onClick={handleDelete(params.row.id)}
-          />
-        </GridActionsCell>
+      renderCell: (params: GridRenderCellParams<Debtor>) => (
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+          <Tooltip title="Открыть">
+            <IconButton
+              size="small"
+              onClick={() =>
+                window.open(`/debtors/${params.row.id}`, "_blank", "noopener,noreferrer")
+              }
+              sx={{ color: "text.secondary" }}
+            >
+              <OpenInNewIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Удалить">
+            <IconButton
+              size="small"
+              onClick={handleDelete(params.row.id)}
+              sx={{ color: "error.main" }}
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
       ),
     },
   ];
