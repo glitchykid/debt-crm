@@ -49,7 +49,14 @@ export const createDebtorSchema = z.object({
       (v) => !isNaN(parseFloat(v)) && parseFloat(v) > 0,
       "Сумма должна быть положительным числом",
     ),
-  interest: optionalDecimal,
+  // Ставка — обязательна
+  interest: z
+    .string()
+    .min(1, "Укажите процентную ставку")
+    .refine(
+      (v) => !isNaN(parseFloat(v)) && parseFloat(v) > 0,
+      "Ставка должна быть больше 0",
+    ),
   accruedInterest: optionalDecimal,
   closedDate: optionalDbDate,
   lastPaymentDate: optionalDbDate,

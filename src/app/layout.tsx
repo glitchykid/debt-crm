@@ -27,7 +27,8 @@ export default function RootLayout({
         className={`${jost.variable} antialiased`}
         style={{ margin: 0, height: "100dvh", display: "flex", flexDirection: "column" }}
       >
-        <InitColorSchemeScript attribute="class" />
+        {/* colorSchemeSelector должен совпадать с theme.cssVariables.colorSchemeSelector */}
+        <InitColorSchemeScript attribute="class" defaultMode="light" />
         <Providers>{children}</Providers>
       </body>
     </html>

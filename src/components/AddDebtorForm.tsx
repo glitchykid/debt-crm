@@ -87,6 +87,7 @@ export default function AddDebtorForm({ onSuccess }: { onSuccess: () => void }) 
         <TextField
           label="Ставка, %/день"
           name="interest"
+          required
           size="small"
           sx={{ width: 120, flexShrink: 0 }}
           slotProps={decimalSlot}

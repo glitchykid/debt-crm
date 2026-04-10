@@ -8,16 +8,20 @@ import {
   getDebtorById,
 } from "@/lib/db/queries/debtors";
 import { createDebtorSchema } from "@/lib/validators/debtor";
+import { type Debtor } from "@/lib/db/schema";
 
 export type ActionResult<T = undefined> =
   | { success: true; data?: T }
   | { success: false; error: string };
 
-export async function fetchDebtorsAction() {
+export async function fetchDebtorsAction(): Promise<Debtor[]> {
   try {
     return await getAllDebtors();
-  } catch {
-    throw new Error("Не удалось получить данные");
+  } catch (err) {
+    console.error("fetchDebtorsAction error:", err);
+    // Возвращаем пустой массив вместо throw — UI покажет пустую таблицу,
+    // а не падает с необработанной ошибкой
+    return [];
   }
 }
 
@@ -50,7 +54,10 @@ export async function createDebtorAction(
     return { success: false, error: message };
   }
 
-  const { fullname, status, createdDate, nextPaymentDate, principal, interest, accruedInterest, closedDate, lastPaymentDate } = parsed.data;
+  const {
+    fullname, status, createdDate, nextPaymentDate,
+    principal, interest, accruedInterest, closedDate, lastPaymentDate,
+  } = parsed.data;
 
   try {
     await createDebtor({
@@ -59,7 +66,7 @@ export async function createDebtorAction(
       created_date: createdDate,
       next_payment_date: nextPaymentDate,
       principal,
-      interest: interest && interest !== "" ? interest : null,
+      interest: interest,
       accrued_interest: accruedInterest && accruedInterest !== "" ? accruedInterest : null,
       closed_date: closedDate ?? null,
       last_payment_date: lastPaymentDate ?? null,

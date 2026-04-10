@@ -1,9 +1,23 @@
 import { db } from "@/lib/db";
 import { debtorsTable, type InsertDebtor } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 export async function getAllDebtors() {
-  return db.select().from(debtorsTable);
+  // coalesce защищает от ситуации когда колонка accrued_interest ещё не добавлена в БД
+  return db
+    .select({
+      id: debtorsTable.id,
+      fullname: debtorsTable.fullname,
+      status: debtorsTable.status,
+      created_date: debtorsTable.created_date,
+      closed_date: debtorsTable.closed_date,
+      last_payment_date: debtorsTable.last_payment_date,
+      next_payment_date: debtorsTable.next_payment_date,
+      principal: debtorsTable.principal,
+      interest: debtorsTable.interest,
+      accrued_interest: sql<string | null>`coalesce(${debtorsTable.accrued_interest}, null)`,
+    })
+    .from(debtorsTable);
 }
 
 export async function getDebtorById(id: number) {

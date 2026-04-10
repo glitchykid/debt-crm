@@ -6,7 +6,10 @@ import { ruRU as DGruRU } from "@mui/x-data-grid/locales";
 
 const theme = createTheme(
   {
-    cssVariables: true,
+    cssVariables: {
+      colorSchemeSelector: "class",
+    },
+    defaultColorScheme: "light",
     colorSchemes: {
       light: {
         palette: {
