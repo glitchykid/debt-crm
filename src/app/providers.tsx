@@ -9,6 +9,7 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import "dayjs/locale/ru";
 import dynamic from "next/dynamic";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v13-appRouter";
+import { AppShell } from "@/components/AppShell";
 
 const ClientSnackbarProvider = dynamic(() => import("@/app/snackbar"), {
   ssr: false,
@@ -20,7 +21,9 @@ export function Providers({ children }: { children: ReactNode }) {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="ru">
-          <ClientSnackbarProvider>{children}</ClientSnackbarProvider>
+          <ClientSnackbarProvider>
+            <AppShell>{children}</AppShell>
+          </ClientSnackbarProvider>
         </LocalizationProvider>
       </ThemeProvider>
     </AppRouterCacheProvider>

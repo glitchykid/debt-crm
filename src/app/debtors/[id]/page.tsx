@@ -14,5 +14,9 @@ export default async function DebtorPage({
   const debtor = await fetchDebtorByIdAction(numericId);
   if (!debtor) notFound();
 
-  return <DebtorInfo debtor={debtor} />;
+  return (
+    <div style={{ flex: 1, overflowY: "auto" }}>
+      <DebtorInfo debtor={debtor} />
+    </div>
+  );
 }

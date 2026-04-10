@@ -2,6 +2,8 @@
  * Утилиты расчёта простых процентов.
  * Ставка хранится как % в ДЕНЬ (поле interest в БД).
  * Формула: сумма_процентов = principal × (rate / 100) × days
+ *
+ * В расчётах учитываем accrued_interest — перенесённые проценты из прошлых периодов.
  */
 
 /** Процентов за 1 день, ₽ */
@@ -10,57 +12,58 @@ export function dailyInterestAmount(principal: number, dailyRatePct: number): nu
   return principal * (dailyRatePct / 100);
 }
 
-/** Накопленные проценты за N дней, ₽ */
+/** Накопленные проценты за N дней, ₽ (без учёта перенесённых) */
 export function accruedInterest(principal: number, dailyRatePct: number, days: number): number {
   return dailyInterestAmount(principal, dailyRatePct) * Math.max(0, days);
 }
 
-/** Итого (основной долг + накопленные проценты), ₽ */
-export function totalDebt(principal: number, dailyRatePct: number, days: number): number {
-  return principal + accruedInterest(principal, dailyRatePct, days);
+/** Итого (основной долг + накопленные проценты + перенесённые %), ₽ */
+export function totalDebt(
+  principal: number,
+  dailyRatePct: number,
+  days: number,
+  storedAccrued = 0,
+): number {
+  return principal + storedAccrued + accruedInterest(principal, dailyRatePct, days);
 }
 
 /**
- * После платежа payment: какой останется principal (проценты гасятся первыми).
- * Возвращает { newPrincipal, remainder } где remainder — сдача (payment > total).
+ * После платежа: сначала гасятся проценты (накопленные + перенесённые),
+ * затем основной долг.
  */
 export function afterPayment(
   principal: number,
   dailyRatePct: number,
   days: number,
   payment: number,
-): { newPrincipal: number; remainder: number; accrued: number } {
-  const accrued = accruedInterest(principal, dailyRatePct, days);
-  const total = principal + accrued;
+  storedAccrued = 0,
+): { newPrincipal: number; remainder: number; totalAccrued: number } {
+  const totalAccrued = storedAccrued + accruedInterest(principal, dailyRatePct, days);
+  const total = principal + totalAccrued;
   const paid = Math.min(payment, total);
-  const leftoverPrincipal = Math.max(0, total - paid);
+  const leftover = Math.max(0, total - paid);
   const remainder = Math.max(0, payment - total);
-  return { newPrincipal: leftoverPrincipal, remainder, accrued };
+  return { newPrincipal: leftover, remainder, totalAccrued };
 }
 
 /**
- * Минимальная доплата δ такая, что (principal + accrued + δ) кратно 1 копейке без хвоста,
- * и ежедневные проценты от нового остатка дают целые копейки.
- *
- * Алгоритм: ищем ближайший newPrincipal >= 0 такой, что
- *   newPrincipal * (rate/100) * 100  — целое (т.е. нет долей копейки в день).
- * Проверяем до 200 копеек вверх.
+ * Минимальная доплата δ такая, что ежедневные проценты от нового остатка
+ * дают целые копейки (нет дробей < 0.01 коп).
  */
 export function suggestRoundUp(
   principal: number,
   dailyRatePct: number,
   days: number,
   currentPayment: number,
+  storedAccrued = 0,
 ): number | null {
   if (!dailyRatePct) return null;
-  const accrued = accruedInterest(principal, dailyRatePct, days);
-  const total = principal + accrued;
-  const paid = currentPayment;
-  if (paid >= total) return null;
+  const totalAccrued = storedAccrued + accruedInterest(principal, dailyRatePct, days);
+  const total = principal + totalAccrued;
+  if (currentPayment >= total) return null;
 
-  const remaining = total - paid; // остаток основного долга после платежа
-  // Ищем минимальную доплату δ ∈ [0, 200 коп] такую, что
-  // (remaining - δ) * rate/100 не имеет дробных копеек
+  const remaining = total - currentPayment;
+
   for (let delta100 = 0; delta100 <= 20000; delta100++) {
     const delta = delta100 / 100;
     const newPrincipal = remaining - delta;

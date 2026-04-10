@@ -14,7 +14,7 @@ import {
   GridActionsCell,
   GridRenderCellParams,
 } from "@mui/x-data-grid";
-import { Box, Chip } from "@mui/material";
+import { Box, Chip, IconButton, Tooltip } from "@mui/material";
 import { deleteDebtorAction, fetchDebtorsAction } from "@/actions/debtors";
 import { type Debtor } from "@/lib/db/schema";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -79,12 +79,12 @@ export function DebtorsDataGrid({ onReloadRef }: DebtorsDataGridProps) {
     });
   };
 
+  // Все колонки с явной шириной — таблица не прыгает при загрузке
   const columns: GridColDef<Debtor>[] = [
     {
       field: "fullname",
       headerName: "ФИО",
-      minWidth: 180,
-      flex: 2,
+      width: 220,
     },
     {
       field: "status",
@@ -96,61 +96,83 @@ export function DebtorsDataGrid({ onReloadRef }: DebtorsDataGridProps) {
           color={STATUS_COLOR[p.value as string] ?? "default"}
           size="small"
           variant="outlined"
-          sx={{ fontSize: 12 }}
+          sx={{ fontSize: 11, height: 20 }}
         />
       ),
     },
     {
       field: "principal",
       headerName: "Долг, ₽",
-      width: 130,
+      width: 120,
       type: "number",
       valueFormatter: (v) => fmtMoney(parseFloat(v as string)),
     },
     {
+      field: "interest",
+      headerName: "Ставка, %/д",
+      width: 110,
+      type: "number",
+      valueFormatter: (v) => (v ? `${v}%` : "—"),
+    },
+    {
       field: "_accrued",
       headerName: "Накоплено %, ₽",
-      width: 150,
+      width: 145,
       type: "number",
       sortable: false,
-      valueGetter: (_v, row) =>
-        accruedInterest(parseFloat(row.principal), parseFloat(row.interest ?? "0"), debtorDays(row)),
+      valueGetter: (_v, row) => {
+        const stored = parseFloat(row.accrued_interest ?? "0");
+        const daily = accruedInterest(parseFloat(row.principal), parseFloat(row.interest ?? "0"), debtorDays(row));
+        return stored + daily;
+      },
       valueFormatter: (v) => fmtMoney(v as number),
     },
     {
       field: "_total",
       headerName: "Итого, ₽",
-      width: 140,
+      width: 130,
       type: "number",
       sortable: false,
       valueGetter: (_v, row) =>
-        totalDebt(parseFloat(row.principal), parseFloat(row.interest ?? "0"), debtorDays(row)),
+        totalDebt(
+          parseFloat(row.principal),
+          parseFloat(row.interest ?? "0"),
+          debtorDays(row),
+          parseFloat(row.accrued_interest ?? "0"),
+        ),
       valueFormatter: (v) => fmtMoney(v as number),
     },
     {
       field: "next_payment_date",
-      headerName: "Следующий платёж",
-      width: 155,
+      headerName: "След. платёж",
+      width: 125,
       valueFormatter: (v) => fmtDate(v as string),
     },
     {
       field: "actions",
-      type: "actions",
       headerName: "",
-      width: 80,
+      width: 72,
       sortable: false,
       filterable: false,
       renderCell: (params) => (
-        <GridActionsCell {...params}>
+        <GridActionsCell {...(params as Parameters<typeof GridActionsCell>[0])}>
           <GridActionsCellItem
-            icon={<OpenInNewIcon fontSize="small" />}
+            icon={
+              <Tooltip title="Открыть">
+                <OpenInNewIcon fontSize="small" sx={{ color: "text.secondary" }} />
+              </Tooltip>
+            }
             label="Открыть"
             onClick={() =>
               window.open(`/debtors/${params.row.id}`, "_blank", "noopener,noreferrer")
             }
           />
           <GridActionsCellItem
-            icon={<DeleteIcon fontSize="small" color="error" />}
+            icon={
+              <Tooltip title="Удалить">
+                <DeleteIcon fontSize="small" sx={{ color: "error.main" }} />
+              </Tooltip>
+            }
             label="Удалить"
             onClick={handleDelete(params.row.id)}
           />
@@ -169,11 +191,21 @@ export function DebtorsDataGrid({ onReloadRef }: DebtorsDataGridProps) {
         disableColumnMenu
         disableColumnResize
         density="compact"
+        autoPageSize
         sx={{
           border: 0,
           flex: 1,
-          "& .MuiDataGrid-columnHeaders": { fontSize: 12 },
-          "& .MuiDataGrid-cell": { fontSize: 13 },
+          // Фиксируем минимальную ширину колонок — ширина не скачет
+          "& .MuiDataGrid-virtualScroller": { overflowX: "auto" },
+          "& .MuiDataGrid-columnHeader, & .MuiDataGrid-cell": {
+            fontSize: 13,
+            outline: "none !important",
+          },
+          "& .MuiDataGrid-columnHeaderTitle": {
+            fontSize: 12,
+            fontWeight: 600,
+            color: "text.secondary",
+          },
         }}
       />
     </Box>

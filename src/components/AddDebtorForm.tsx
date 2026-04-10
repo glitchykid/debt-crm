@@ -19,9 +19,9 @@ function allowDecimalOnly(e: KeyboardEvent<HTMLInputElement>) {
   if (!ctrl.includes(e.key) && isNaN(Number(e.key))) e.preventDefault();
 }
 
-const decimalProps = {
-  inputMode: "decimal" as const,
-  onKeyDown: allowDecimalOnly,
+const decimalSlot = {
+  inputLabel: { shrink: true },
+  htmlInput: { inputMode: "decimal" as const, onKeyDown: allowDecimalOnly },
 };
 
 export default function AddDebtorForm({ onSuccess }: { onSuccess: () => void }) {
@@ -40,12 +40,13 @@ export default function AddDebtorForm({ onSuccess }: { onSuccess: () => void }) 
   return (
     <Box component="form" action={handleAction}>
       <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap alignItems="flex-start">
+        {/* ФИО — растягивается */}
         <TextField
           label="ФИО"
           name="fullname"
           required
           size="small"
-          sx={{ minWidth: 200, flex: 2 }}
+          sx={{ minWidth: 200, flex: "2 1 200px" }}
           slotProps={{ inputLabel: { shrink: true } }}
         />
 
@@ -56,7 +57,7 @@ export default function AddDebtorForm({ onSuccess }: { onSuccess: () => void }) 
           defaultValue="Активен"
           required
           size="small"
-          sx={{ minWidth: 140 }}
+          sx={{ width: 140, flexShrink: 0 }}
           slotProps={{ inputLabel: { shrink: true } }}
         >
           {STATUS_OPTIONS.map((o) => (
@@ -67,36 +68,38 @@ export default function AddDebtorForm({ onSuccess }: { onSuccess: () => void }) 
         </TextField>
 
         <TextField
-          label="Сумма долга, ₽"
+          label="Долг, ₽"
           name="principal"
           required
           size="small"
-          sx={{ minWidth: 140 }}
-          slotProps={{
-            inputLabel: { shrink: true },
-            htmlInput: decimalProps,
-          }}
+          sx={{ width: 130, flexShrink: 0 }}
+          slotProps={decimalSlot}
         />
 
         <TextField
-          label="Ставка, % / день"
+          label="Накоп. %, ₽"
+          name="accruedInterest"
+          size="small"
+          sx={{ width: 120, flexShrink: 0 }}
+          slotProps={decimalSlot}
+        />
+
+        <TextField
+          label="Ставка, %/день"
           name="interest"
           size="small"
-          sx={{ minWidth: 130 }}
-          slotProps={{
-            inputLabel: { shrink: true },
-            htmlInput: decimalProps,
-          }}
+          sx={{ width: 120, flexShrink: 0 }}
+          slotProps={decimalSlot}
         />
 
         <DatePicker
-          label="Дата открытия"
+          label="Открыт"
           format="DD.MM.YYYY"
           defaultValue={dayjs()}
           disableFuture
           name="createdDate"
           slotProps={{
-            textField: { required: true, size: "small", InputLabelProps: { shrink: true } },
+            textField: { required: true, size: "small", sx: { width: 148 }, InputLabelProps: { shrink: true } },
           }}
         />
 
@@ -106,7 +109,7 @@ export default function AddDebtorForm({ onSuccess }: { onSuccess: () => void }) 
           name="nextPaymentDate"
           defaultValue={dayjs().add(32, "day")}
           slotProps={{
-            textField: { required: true, size: "small", InputLabelProps: { shrink: true } },
+            textField: { required: true, size: "small", sx: { width: 148 }, InputLabelProps: { shrink: true } },
           }}
         />
 
@@ -115,7 +118,7 @@ export default function AddDebtorForm({ onSuccess }: { onSuccess: () => void }) 
           format="DD.MM.YYYY"
           name="lastPaymentDate"
           slotProps={{
-            textField: { size: "small", InputLabelProps: { shrink: true } },
+            textField: { size: "small", sx: { width: 148 }, InputLabelProps: { shrink: true } },
           }}
         />
 
@@ -124,7 +127,7 @@ export default function AddDebtorForm({ onSuccess }: { onSuccess: () => void }) 
           variant="contained"
           disableElevation
           size="small"
-          sx={{ alignSelf: "flex-start", mt: "1px", height: 40 }}
+          sx={{ height: 40, flexShrink: 0, alignSelf: "flex-start" }}
         >
           Добавить
         </Button>

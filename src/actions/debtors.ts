@@ -35,11 +35,11 @@ export async function createDebtorAction(
   const raw = {
     fullname: formData.get("fullname"),
     status: formData.get("status"),
-    // DatePicker передаёт ISO YYYY-MM-DD через FormData name-атрибут
     createdDate: formData.get("createdDate"),
     nextPaymentDate: formData.get("nextPaymentDate"),
     principal: formData.get("principal"),
     interest: formData.get("interest") ?? undefined,
+    accruedInterest: formData.get("accruedInterest") ?? undefined,
     closedDate: formData.get("closedDate") ?? undefined,
     lastPaymentDate: formData.get("lastPaymentDate") ?? undefined,
   };
@@ -50,16 +50,7 @@ export async function createDebtorAction(
     return { success: false, error: message };
   }
 
-  const {
-    fullname,
-    status,
-    createdDate,
-    nextPaymentDate,
-    principal,
-    interest,
-    closedDate,
-    lastPaymentDate,
-  } = parsed.data;
+  const { fullname, status, createdDate, nextPaymentDate, principal, interest, accruedInterest, closedDate, lastPaymentDate } = parsed.data;
 
   try {
     await createDebtor({
@@ -69,6 +60,7 @@ export async function createDebtorAction(
       next_payment_date: nextPaymentDate,
       principal,
       interest: interest && interest !== "" ? interest : null,
+      accrued_interest: accruedInterest && accruedInterest !== "" ? accruedInterest : null,
       closed_date: closedDate ?? null,
       last_payment_date: lastPaymentDate ?? null,
     });

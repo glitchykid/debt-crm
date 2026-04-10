@@ -17,14 +17,14 @@ export function DebtorsManager() {
         minHeight: 0,
       }}
     >
-      {/* Шапка + форма */}
-      <Box sx={{ px: { xs: 2, md: 3 }, pt: 2.5, pb: 2, flexShrink: 0 }}>
+      {/* Форма добавления */}
+      <Box sx={{ px: { xs: 2, md: 3 }, pt: 2, pb: 1.5, flexShrink: 0 }}>
         <Typography
-          variant="subtitle2"
+          variant="caption"
           fontWeight={600}
-          color="text.secondary"
-          letterSpacing={0.5}
-          sx={{ textTransform: "uppercase", mb: 1.5, fontSize: 11 }}
+          color="text.disabled"
+          letterSpacing={0.8}
+          sx={{ textTransform: "uppercase", display: "block", mb: 1.5 }}
         >
           Новый должник
         </Typography>
@@ -33,7 +33,7 @@ export function DebtorsManager() {
 
       <Divider />
 
-      {/* Таблица — всё оставшееся место */}
+      {/* Таблица — всё оставшееся место, не прыгает по ширине */}
       <Box sx={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
         <DebtorsDataGrid onReloadRef={reloadRef} />
       </Box>
