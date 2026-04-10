@@ -21,22 +21,10 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { useSnackbar } from "notistack";
 import dayjs from "dayjs";
+import { accruedInterest, totalDebt, fmtMoney } from "@/lib/interest";
 
 interface DebtorsDataGridProps {
   onReloadRef?: MutableRefObject<(() => void) | null>;
-}
-
-// Сумма накопленных простых процентов
-function calcAccruedInterest(debtor: Debtor): number {
-  const rate = parseFloat(debtor.interest ?? "0");
-  const principal = parseFloat(debtor.principal);
-  if (!rate || !principal || !debtor.created_date) return 0;
-  const days = dayjs().diff(dayjs(debtor.created_date), "day");
-  return principal * (rate / 100) * (days / 365);
-}
-
-function fmtMoney(n: number): string {
-  return n.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtDate(s: string | null): string {
@@ -50,6 +38,10 @@ const STATUS_COLOR: Record<string, "success" | "warning" | "error" | "default"> 
   Просрочен: "warning",
   Закрыт: "default",
 };
+
+function debtorDays(row: Debtor): number {
+  return dayjs().diff(dayjs(row.created_date), "day");
+}
 
 export function DebtorsDataGrid({ onReloadRef }: DebtorsDataGridProps) {
   const { enqueueSnackbar } = useSnackbar();
@@ -69,15 +61,10 @@ export function DebtorsDataGrid({ onReloadRef }: DebtorsDataGridProps) {
     }
   }, [enqueueSnackbar]);
 
-  useEffect(() => {
-    void loadData();
-  }, [loadData]);
+  useEffect(() => { void loadData(); }, [loadData]);
+  useEffect(() => { if (onReloadRef) onReloadRef.current = loadData; }, [onReloadRef, loadData]);
 
-  useEffect(() => {
-    if (onReloadRef) onReloadRef.current = loadData;
-  }, [onReloadRef, loadData]);
-
-  const handleDeleteClick = (id: number) => () => {
+  const handleDelete = (id: number) => () => {
     if (!window.confirm("Удалить должника?")) return;
     startTransition(async () => {
       setLoading(true);
@@ -87,7 +74,7 @@ export function DebtorsDataGrid({ onReloadRef }: DebtorsDataGridProps) {
         setLoading(false);
         return;
       }
-      enqueueSnackbar("Должник удалён", { variant: "success" });
+      enqueueSnackbar("Удалено", { variant: "success" });
       await loadData();
     });
   };
@@ -96,59 +83,61 @@ export function DebtorsDataGrid({ onReloadRef }: DebtorsDataGridProps) {
     {
       field: "fullname",
       headerName: "ФИО",
-      width: 220,
-      minWidth: 160,
+      minWidth: 180,
+      flex: 2,
     },
     {
       field: "status",
       headerName: "Статус",
-      width: 140,
-      renderCell: (params: GridRenderCellParams<Debtor>) => (
+      width: 130,
+      renderCell: (p: GridRenderCellParams<Debtor>) => (
         <Chip
-          label={params.value as string}
-          color={STATUS_COLOR[params.value as string] ?? "default"}
+          label={p.value as string}
+          color={STATUS_COLOR[p.value as string] ?? "default"}
           size="small"
           variant="outlined"
+          sx={{ fontSize: 12 }}
         />
       ),
     },
     {
       field: "principal",
-      headerName: "Основной долг",
-      width: 150,
+      headerName: "Долг, ₽",
+      width: 130,
       type: "number",
-      valueFormatter: (value) => fmtMoney(parseFloat(value as string)),
+      valueFormatter: (v) => fmtMoney(parseFloat(v as string)),
     },
     {
       field: "_accrued",
-      headerName: "Накоплено %",
-      width: 140,
+      headerName: "Накоплено %, ₽",
+      width: 150,
       type: "number",
       sortable: false,
-      valueGetter: (_value, row) => calcAccruedInterest(row),
-      valueFormatter: (value) => fmtMoney(value as number),
+      valueGetter: (_v, row) =>
+        accruedInterest(parseFloat(row.principal), parseFloat(row.interest ?? "0"), debtorDays(row)),
+      valueFormatter: (v) => fmtMoney(v as number),
     },
     {
       field: "_total",
-      headerName: "Итого (долг + %)",
-      width: 160,
+      headerName: "Итого, ₽",
+      width: 140,
       type: "number",
       sortable: false,
-      valueGetter: (_value, row) =>
-        parseFloat(row.principal) + calcAccruedInterest(row),
-      valueFormatter: (value) => fmtMoney(value as number),
+      valueGetter: (_v, row) =>
+        totalDebt(parseFloat(row.principal), parseFloat(row.interest ?? "0"), debtorDays(row)),
+      valueFormatter: (v) => fmtMoney(v as number),
     },
     {
       field: "next_payment_date",
       headerName: "Следующий платёж",
-      width: 160,
-      valueFormatter: (value) => fmtDate(value as string),
+      width: 155,
+      valueFormatter: (v) => fmtDate(v as string),
     },
     {
       field: "actions",
       type: "actions",
-      headerName: "Действия",
-      width: 90,
+      headerName: "",
+      width: 80,
       sortable: false,
       filterable: false,
       renderCell: (params) => (
@@ -156,12 +145,14 @@ export function DebtorsDataGrid({ onReloadRef }: DebtorsDataGridProps) {
           <GridActionsCellItem
             icon={<OpenInNewIcon fontSize="small" />}
             label="Открыть"
-            onClick={() => window.open(`/debtors/${params.row.id}`, "_blank", "noopener,noreferrer")}
+            onClick={() =>
+              window.open(`/debtors/${params.row.id}`, "_blank", "noopener,noreferrer")
+            }
           />
           <GridActionsCellItem
             icon={<DeleteIcon fontSize="small" color="error" />}
             label="Удалить"
-            onClick={handleDeleteClick(params.row.id)}
+            onClick={handleDelete(params.row.id)}
           />
         </GridActionsCell>
       ),
@@ -169,7 +160,7 @@ export function DebtorsDataGrid({ onReloadRef }: DebtorsDataGridProps) {
   ];
 
   return (
-    <Box sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+    <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <DataGrid
         disableRowSelectionOnClick
         loading={loading}
@@ -177,7 +168,13 @@ export function DebtorsDataGrid({ onReloadRef }: DebtorsDataGridProps) {
         columns={columns}
         disableColumnMenu
         disableColumnResize
-        sx={{ border: 0, flex: 1 }}
+        density="compact"
+        sx={{
+          border: 0,
+          flex: 1,
+          "& .MuiDataGrid-columnHeaders": { fontSize: 12 },
+          "& .MuiDataGrid-cell": { fontSize: 13 },
+        }}
       />
     </Box>
   );

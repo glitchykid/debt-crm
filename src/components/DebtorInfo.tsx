@@ -1,7 +1,9 @@
 "use client";
 
 import {
+  Alert,
   Box,
+  Button,
   Chip,
   Divider,
   Paper,
@@ -13,6 +15,14 @@ import {
 import { type Debtor } from "@/lib/db/schema";
 import dayjs from "dayjs";
 import { useState, useMemo } from "react";
+import {
+  accruedInterest,
+  totalDebt,
+  dailyInterestAmount,
+  afterPayment,
+  suggestRoundUp,
+  fmtMoney,
+} from "@/lib/interest";
 
 interface DebtorInfoProps {
   debtor: Debtor;
@@ -25,22 +35,33 @@ const STATUS_COLOR: Record<string, "success" | "warning" | "error" | "default"> 
   Закрыт: "default",
 };
 
-function fmtMoney(n: number): string {
-  return n.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
 function fmtDate(s: string | null | undefined): string {
   if (!s) return "—";
   return dayjs(s).format("DD.MM.YYYY");
 }
 
-function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+function Row({
+  label,
+  value,
+  bold,
+  accent,
+}: {
+  label: string;
+  value: React.ReactNode;
+  bold?: boolean;
+  accent?: boolean;
+}) {
   return (
-    <Stack direction="row" justifyContent="space-between" alignItems="center">
-      <Typography color="text.secondary" variant="body2">
+    <Stack direction="row" justifyContent="space-between" alignItems="baseline" py={0.5}>
+      <Typography variant="body2" color="text.secondary" sx={{ pr: 2 }}>
         {label}
       </Typography>
-      <Typography variant="body2" fontWeight={500} textAlign="right">
+      <Typography
+        variant="body2"
+        fontWeight={bold ? 700 : 500}
+        color={accent ? "primary.main" : "text.primary"}
+        noWrap
+      >
         {value}
       </Typography>
     </Stack>
@@ -49,40 +70,68 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 
 export function DebtorInfo({ debtor }: DebtorInfoProps) {
   const principal = parseFloat(debtor.principal);
-  const annualRate = parseFloat(debtor.interest ?? "0");
+  const dailyRate = parseFloat(debtor.interest ?? "0"); // % в день
 
-  // Дни с открытия до сегодня
   const daysOpen = dayjs().diff(dayjs(debtor.created_date), "day");
 
-  // Простые проценты: principal × rate/100 × days/365
-  const dailyInterest = annualRate > 0 ? principal * (annualRate / 100) / 365 : 0;
-  const accruedInterest = dailyInterest * daysOpen;
-  const total = principal + accruedInterest;
-  const in32days = principal + dailyInterest * (daysOpen + 32);
+  const daily = dailyInterestAmount(principal, dailyRate);
+  const accrued = accruedInterest(principal, dailyRate, daysOpen);
+  const total = totalDebt(principal, dailyRate, daysOpen);
+  const in32 = principal + daily * (daysOpen + 32);
 
-  // Форма внесения платежа
+  // Калькулятор платежа
   const [paymentStr, setPaymentStr] = useState("");
   const payment = parseFloat(paymentStr) || 0;
 
-  const afterPayment = useMemo(() => {
+  const calc = useMemo(() => {
     if (payment <= 0) return null;
-    const remaining = Math.max(0, total - payment);
-    return remaining;
-  }, [total, payment]);
+    const { newPrincipal, remainder, accrued: paidAccrued } = afterPayment(
+      principal,
+      dailyRate,
+      daysOpen,
+      payment,
+    );
+
+    const newDaily = dailyInterestAmount(newPrincipal, dailyRate);
+    const newDailyKopecks = Math.round(newDaily * 100) / 100;
+    const hasFractions = Math.abs(newDaily * 100 - Math.round(newDaily * 100)) > 0.001;
+
+    // Процентов накопится завтра, через 7, через 30 дней на новый остаток
+    const tomorrow = accruedInterest(newPrincipal, dailyRate, 1);
+    const week = accruedInterest(newPrincipal, dailyRate, 7);
+    const month = accruedInterest(newPrincipal, dailyRate, 30);
+
+    const roundUp = hasFractions
+      ? suggestRoundUp(principal, dailyRate, daysOpen, payment)
+      : null;
+
+    return {
+      newPrincipal,
+      remainder,
+      paidAccrued,
+      newDaily,
+      newDailyKopecks,
+      hasFractions,
+      tomorrow,
+      week,
+      month,
+      roundUp,
+    };
+  }, [payment, principal, dailyRate, daysOpen]);
 
   return (
     <Box
       sx={{
         px: { xs: 2, md: 4 },
         py: 3,
-        maxWidth: 720,
+        maxWidth: 640,
         mx: "auto",
       }}
     >
-      <Stack spacing={3}>
-        {/* Шапка */}
-        <Stack direction="row" spacing={2} alignItems="center">
-          <Typography variant="h5" fontWeight={600} flex={1}>
+      <Stack spacing={2.5}>
+        {/* Заголовок */}
+        <Stack direction="row" spacing={1.5} alignItems="center">
+          <Typography variant="h6" fontWeight={700} flex={1} lineHeight={1.3}>
             {debtor.fullname}
           </Typography>
           <Chip
@@ -92,101 +141,142 @@ export function DebtorInfo({ debtor }: DebtorInfoProps) {
           />
         </Stack>
 
-        {/* Основная информация */}
-        <Paper variant="outlined" sx={{ p: 2.5 }}>
-          <Typography variant="subtitle2" fontWeight={600} mb={1.5}>
-            Данные по договору
+        {/* Даты */}
+        <Paper variant="outlined" sx={{ px: 2, py: 1.5 }}>
+          <Typography variant="caption" fontWeight={600} color="text.secondary" display="block" mb={0.5}>
+            ДАТЫ
           </Typography>
-          <Stack spacing={1} divider={<Divider />}>
-            <InfoRow label="Дата открытия" value={fmtDate(debtor.created_date)} />
-            <InfoRow label="Дата закрытия" value={fmtDate(debtor.closed_date)} />
-            <InfoRow label="Предыдущий платёж" value={fmtDate(debtor.last_payment_date)} />
-            <InfoRow label="Следующий платёж" value={fmtDate(debtor.next_payment_date)} />
-          </Stack>
+          <Divider sx={{ mb: 1 }} />
+          <Row label="Дата открытия" value={fmtDate(debtor.created_date)} />
+          <Row label="Предыдущий платёж" value={fmtDate(debtor.last_payment_date)} />
+          <Row label="Следующий платёж" value={fmtDate(debtor.next_payment_date)} />
+          {debtor.closed_date && (
+            <Row label="Дата закрытия" value={fmtDate(debtor.closed_date)} />
+          )}
         </Paper>
 
-        {/* Финансовый блок */}
-        <Paper variant="outlined" sx={{ p: 2.5 }}>
-          <Typography variant="subtitle2" fontWeight={600} mb={1.5}>
-            Финансовый расчёт
+        {/* Финансы */}
+        <Paper variant="outlined" sx={{ px: 2, py: 1.5 }}>
+          <Typography variant="caption" fontWeight={600} color="text.secondary" display="block" mb={0.5}>
+            РАСЧЁТ НА СЕГОДНЯ
           </Typography>
-          <Stack spacing={1} divider={<Divider />}>
-            <InfoRow
-              label="Основной долг"
-              value={`${fmtMoney(principal)} ₽`}
-            />
-            <InfoRow
-              label="Процентная ставка"
-              value={annualRate > 0 ? `${annualRate}% / год` : "—"}
-            />
-            <InfoRow
-              label="Процентов в день"
-              value={annualRate > 0 ? `${fmtMoney(dailyInterest)} ₽` : "—"}
-            />
-            <InfoRow
-              label={`Накоплено процентов (${daysOpen} дн.)`}
-              value={annualRate > 0 ? `${fmtMoney(accruedInterest)} ₽` : "—"}
-            />
-            <InfoRow
-              label="Итого (долг + %)"
-              value={
-                <Typography variant="body2" fontWeight={700} color="primary.main">
-                  {fmtMoney(total)} ₽
-                </Typography>
-              }
-            />
-            <InfoRow
-              label="Итого через 32 дня"
-              value={annualRate > 0 ? `${fmtMoney(in32days)} ₽` : `${fmtMoney(principal)} ₽`}
-            />
-          </Stack>
+          <Divider sx={{ mb: 1 }} />
+          <Row label="Основной долг" value={`${fmtMoney(principal)} ₽`} />
+          <Row
+            label="Ставка"
+            value={dailyRate > 0 ? `${dailyRate}% / день` : "—"}
+          />
+          <Row
+            label="Процентов в день"
+            value={dailyRate > 0 ? `${fmtMoney(daily)} ₽` : "—"}
+          />
+          <Row
+            label={`Накоплено процентов (${daysOpen} дн.)`}
+            value={dailyRate > 0 ? `${fmtMoney(accrued)} ₽` : "—"}
+          />
+          <Divider sx={{ my: 0.75 }} />
+          <Row
+            label="Итого (долг + %)"
+            value={`${fmtMoney(total)} ₽`}
+            bold
+            accent
+          />
+          <Row
+            label="Итого через 32 дня"
+            value={dailyRate > 0 ? `${fmtMoney(in32)} ₽` : `${fmtMoney(principal)} ₽`}
+          />
         </Paper>
 
-        {/* Форма внесения платежа */}
-        <Paper variant="outlined" sx={{ p: 2.5 }}>
-          <Typography variant="subtitle2" fontWeight={600} mb={1.5}>
-            Расчёт платежа
+        {/* Калькулятор платежа */}
+        <Paper variant="outlined" sx={{ px: 2, py: 1.5 }}>
+          <Typography variant="caption" fontWeight={600} color="text.secondary" display="block" mb={0.5}>
+            КАЛЬКУЛЯТОР ПЛАТЕЖА
           </Typography>
-          <Stack spacing={2}>
-            <TextField
-              label="Сумма платежа"
-              value={paymentStr}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (/^\d*\.?\d{0,2}$/.test(v)) setPaymentStr(v);
-              }}
-              slotProps={{
-                input: {
-                  endAdornment: <InputAdornment position="end">₽</InputAdornment>,
-                },
-                inputLabel: { shrink: true },
-              }}
-              inputMode="decimal"
-              helperText="Введите сумму, чтобы увидеть остаток"
-            />
+          <Divider sx={{ mb: 1.5 }} />
 
-            {afterPayment !== null && (
-              <Stack spacing={0.5}>
-                <Stack direction="row" justifyContent="space-between">
-                  <Typography variant="body2" color="text.secondary">
-                    Остаток после платежа
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    fontWeight={700}
-                    color={afterPayment === 0 ? "success.main" : "text.primary"}
-                  >
-                    {fmtMoney(afterPayment)} ₽
-                  </Typography>
-                </Stack>
-                {afterPayment === 0 && (
-                  <Typography variant="caption" color="success.main">
-                    Долг полностью погашен
-                  </Typography>
+          <TextField
+            label="Сумма платежа"
+            value={paymentStr}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (/^\d*\.?\d{0,2}$/.test(v)) setPaymentStr(v);
+            }}
+            size="small"
+            fullWidth
+            slotProps={{
+              input: {
+                endAdornment: <InputAdornment position="end">₽</InputAdornment>,
+              },
+              inputLabel: { shrink: true },
+            }}
+            inputMode="decimal"
+            sx={{ mb: 1.5 }}
+          />
+
+          {calc && (
+            <Stack spacing={1.5}>
+              {/* Что платится */}
+              <Stack spacing={0}>
+                <Row label="Из них погашено % (накоплено)" value={`${fmtMoney(Math.min(calc.paidAccrued, payment))} ₽`} />
+                <Row
+                  label="Остаток основного долга"
+                  value={`${fmtMoney(calc.newPrincipal)} ₽`}
+                  bold={calc.newPrincipal === 0}
+                  accent={calc.newPrincipal === 0}
+                />
+                {calc.remainder > 0 && (
+                  <Row label="Переплата (сдача)" value={`${fmtMoney(calc.remainder)} ₽`} />
                 )}
               </Stack>
-            )}
-          </Stack>
+
+              {calc.newPrincipal > 0 && dailyRate > 0 && (
+                <>
+                  <Divider />
+                  {/* Накопление процентов на новый остаток */}
+                  <Stack spacing={0}>
+                    <Typography variant="caption" color="text.secondary" fontWeight={600} mb={0.5}>
+                      Процентов на остаток долга
+                    </Typography>
+                    <Row label="В день" value={`${fmtMoney(calc.newDaily)} ₽`} />
+                    <Row label="За 7 дней" value={`${fmtMoney(calc.week)} ₽`} />
+                    <Row label="За 30 дней" value={`${fmtMoney(calc.month)} ₽`} />
+                  </Stack>
+                </>
+              )}
+
+              {/* Подсказка про копейки */}
+              {calc.hasFractions && calc.roundUp !== null && (
+                <>
+                  <Divider />
+                  <Alert
+                    severity="info"
+                    sx={{ py: 0.5, fontSize: 13 }}
+                    action={
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => {
+                          const suggested = (payment + calc.roundUp!).toFixed(2);
+                          setPaymentStr(suggested);
+                        }}
+                      >
+                        +{fmtMoney(calc.roundUp)} ₽
+                      </Button>
+                    }
+                  >
+                    Ежедневные проценты будут содержать доли копейки. Доплатите{" "}
+                    <strong>{fmtMoney(calc.roundUp)} ₽</strong>, чтобы это исправить.
+                  </Alert>
+                </>
+              )}
+
+              {calc.newPrincipal === 0 && (
+                <Alert severity="success" sx={{ py: 0.5, fontSize: 13 }}>
+                  Долг полностью погашен
+                </Alert>
+              )}
+            </Stack>
+          )}
         </Paper>
       </Stack>
     </Box>

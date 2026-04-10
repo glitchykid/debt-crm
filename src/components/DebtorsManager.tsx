@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Paper, Stack, Typography, Box } from "@mui/material";
+import { Box, Divider, Typography } from "@mui/material";
 import AddDebtorForm from "@/components/AddDebtorForm";
 import { DebtorsDataGrid } from "@/components/DebtorsDataGrid";
 
@@ -15,35 +15,28 @@ export function DebtorsManager() {
         display: "flex",
         flexDirection: "column",
         minHeight: 0,
-        px: { xs: 2, md: 4 },
-        py: 3,
-        gap: 3,
       }}
     >
-      <Typography variant="h5" component="h1" fontWeight={600}>
-        Управление должниками
-      </Typography>
-
-      <Paper variant="outlined" sx={{ p: 3, flexShrink: 0 }}>
-        <Typography variant="subtitle1" fontWeight={500} sx={{ mb: 2 }}>
+      {/* Шапка + форма */}
+      <Box sx={{ px: { xs: 2, md: 3 }, pt: 2.5, pb: 2, flexShrink: 0 }}>
+        <Typography
+          variant="subtitle2"
+          fontWeight={600}
+          color="text.secondary"
+          letterSpacing={0.5}
+          sx={{ textTransform: "uppercase", mb: 1.5, fontSize: 11 }}
+        >
           Новый должник
         </Typography>
         <AddDebtorForm onSuccess={() => reloadRef.current?.()} />
-      </Paper>
+      </Box>
 
-      {/* Таблица растягивается на всё оставшееся место */}
-      <Paper
-        variant="outlined"
-        sx={{
-          flex: 1,
-          minHeight: 0,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-        }}
-      >
+      <Divider />
+
+      {/* Таблица — всё оставшееся место */}
+      <Box sx={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
         <DebtorsDataGrid onReloadRef={reloadRef} />
-      </Paper>
+      </Box>
     </Box>
   );
 }

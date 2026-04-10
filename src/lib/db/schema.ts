@@ -8,8 +8,9 @@ export const debtorsTable = pgTable("debtors", {
   closed_date: date("closed_date", { mode: "string" }),
   last_payment_date: date("last_payment_date", { mode: "string" }),
   next_payment_date: date("next_payment_date", { mode: "string" }).notNull(),
-  principal: numeric({ precision: 12, scale: 2 }).notNull(),
-  interest: numeric({ precision: 5, scale: 2 }),
+  principal: numeric({ precision: 14, scale: 2 }).notNull(),
+  /** Процентная ставка в % в ДЕНЬ (например: 0.5 = 0.5% в день) */
+  interest: numeric({ precision: 8, scale: 4 }),
 });
 
 export type InsertDebtor = typeof debtorsTable.$inferInsert;
