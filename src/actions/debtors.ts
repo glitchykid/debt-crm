@@ -74,8 +74,16 @@ export async function createDebtorAction(
 
     revalidatePath("/");
     return { success: true };
-  } catch {
-    return { success: false, error: "Должник с таким ФИО уже существует" };
+  } catch (err) {
+    console.error("createDebtorAction DB error:", err);
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.toLowerCase().includes("unique") || msg.toLowerCase().includes("duplicate")) {
+      return { success: false, error: "Должник с таким ФИО уже существует" };
+    }
+    if (msg.toLowerCase().includes("column") && msg.toLowerCase().includes("does not exist")) {
+      return { success: false, error: "Ошибка БД: требуется миграция. Запустите pnpm drizzle-kit migrate" };
+    }
+    return { success: false, error: `Ошибка БД: ${msg}` };
   }
 }
 
