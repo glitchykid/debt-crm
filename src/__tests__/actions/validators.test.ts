@@ -2,19 +2,41 @@
  * TDD: Zod-схема валидации — тестируем граничные случаи.
  */
 
-import { createDebtorSchema, toDbDate } from "@/lib/validators/debtor";
+import { createDebtorSchema } from "@/lib/validators/debtor";
 
 describe("createDebtorSchema", () => {
   const valid = {
     fullname: "Иванов Иван",
     status: "Активен" as const,
-    createdDate: "10.04.2026",
-    nextPaymentDate: "10.05.2026",
+    // DatePicker передаёт ISO YYYY-MM-DD через FormData
+    createdDate: "2026-04-10",
+    nextPaymentDate: "2026-05-10",
     principal: "50000",
   };
 
-  it("принимает корректные данные", () => {
-    expect(createDebtorSchema.safeParse(valid).success).toBe(true);
+  it("принимает ISO-даты из DatePicker (YYYY-MM-DD)", () => {
+    const result = createDebtorSchema.safeParse(valid);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.createdDate).toBe("2026-04-10");
+    }
+  });
+
+  it("принимает дату в формате DD.MM.YYYY (ручной ввод)", () => {
+    const result = createDebtorSchema.safeParse({
+      ...valid,
+      createdDate: "10.04.2026",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.createdDate).toBe("2026-04-10");
+    }
+  });
+
+  it("отклоняет некорректную дату", () => {
+    expect(
+      createDebtorSchema.safeParse({ ...valid, createdDate: "не-дата" }).success,
+    ).toBe(false);
   });
 
   it("принимает все допустимые статусы", () => {
@@ -30,12 +52,6 @@ describe("createDebtorSchema", () => {
     ).toBe(false);
   });
 
-  it("отклоняет дату в неверном формате", () => {
-    expect(
-      createDebtorSchema.safeParse({ ...valid, createdDate: "2026-04-10" }).success,
-    ).toBe(false);
-  });
-
   it("отклоняет пустое ФИО", () => {
     expect(createDebtorSchema.safeParse({ ...valid, fullname: "" }).success).toBe(false);
   });
@@ -44,20 +60,13 @@ describe("createDebtorSchema", () => {
     expect(createDebtorSchema.safeParse({ ...valid, principal: "-1" }).success).toBe(false);
   });
 
-  it("принимает опциональные поля", () => {
+  it("принимает опциональные поля с датами", () => {
     const result = createDebtorSchema.safeParse({
       ...valid,
       interest: "5.5",
-      closedDate: "01.01.2027",
-      lastPaymentDate: "01.04.2026",
+      closedDate: "2027-01-01",
+      lastPaymentDate: "2026-04-01",
     });
     expect(result.success).toBe(true);
-  });
-});
-
-describe("toDbDate", () => {
-  it("конвертирует DD.MM.YYYY → YYYY-MM-DD", () => {
-    expect(toDbDate("10.04.2026")).toBe("2026-04-10");
-    expect(toDbDate("01.01.2000")).toBe("2000-01-01");
   });
 });

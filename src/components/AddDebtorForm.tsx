@@ -1,7 +1,15 @@
 "use client";
 
 import { createDebtorAction } from "@/actions/debtors";
-import { Box, Button, TextField, Stack, MenuItem } from "@mui/material";
+import {
+  Box,
+  Button,
+  TextField,
+  Stack,
+  MenuItem,
+  Divider,
+  Typography,
+} from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers";
 import dayjs from "dayjs";
 import { useSnackbar } from "notistack";
@@ -21,13 +29,16 @@ function allowDecimalOnly(e: KeyboardEvent<HTMLInputElement>) {
   }
 }
 
-const shrinkLabel = { inputLabel: { shrink: true } };
+const decimalSlotProps = {
+  inputLabel: { shrink: true },
+  htmlInput: {
+    inputMode: "decimal" as const,
+    pattern: "[0-9]*\\.?[0-9]{0,2}",
+    onKeyDown: allowDecimalOnly,
+  },
+};
 
-export default function AddDebtorForm({
-  onSuccess,
-}: {
-  onSuccess: () => void;
-}) {
+export default function AddDebtorForm({ onSuccess }: { onSuccess: () => void }) {
   const { enqueueSnackbar } = useSnackbar();
 
   const handleAction = async (formData: FormData) => {
@@ -42,90 +53,102 @@ export default function AddDebtorForm({
 
   return (
     <Box component="form" action={handleAction}>
-      <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
-        <TextField
-          label="ФИО"
-          name="fullname"
-          required
-          slotProps={shrinkLabel}
-        />
+      <Stack spacing={3}>
+        {/* Группа 1: основные данные */}
+        <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
+          <TextField
+            label="ФИО"
+            name="fullname"
+            required
+            sx={{ minWidth: 220 }}
+            slotProps={{ inputLabel: { shrink: true } }}
+          />
 
-        <TextField
-          label="Основная сумма"
-          name="principal"
-          required
-          slotProps={{
-            ...shrinkLabel,
-            htmlInput: {
-              inputMode: "decimal",
-              pattern: "[0-9]*\\.?[0-9]{0,2}",
-              onKeyDown: allowDecimalOnly,
-            },
-          }}
-        />
+          <TextField
+            select
+            label="Статус"
+            name="status"
+            defaultValue="Активен"
+            required
+            sx={{ minWidth: 160 }}
+            slotProps={{ inputLabel: { shrink: true } }}
+          >
+            {STATUS_OPTIONS.map((o) => (
+              <MenuItem key={o.value} value={o.value}>
+                {o.label}
+              </MenuItem>
+            ))}
+          </TextField>
 
-        <TextField
-          label="Проценты"
-          name="interest"
-          slotProps={{
-            ...shrinkLabel,
-            htmlInput: {
-              inputMode: "decimal",
-              pattern: "[0-9]*\\.?[0-9]{0,2}",
-              onKeyDown: allowDecimalOnly,
-            },
-          }}
-        />
+          <TextField
+            label="Основная сумма"
+            name="principal"
+            required
+            sx={{ minWidth: 160 }}
+            slotProps={decimalSlotProps}
+          />
 
-        <TextField
-          select
-          label="Статус"
-          name="status"
-          defaultValue="Активен"
-          sx={{ minWidth: 150 }}
-          required
-        >
-          {STATUS_OPTIONS.map((option) => (
-            <MenuItem key={option.value} value={option.value}>
-              {option.label}
-            </MenuItem>
-          ))}
-        </TextField>
+          <TextField
+            label="Процентная ставка, % / год"
+            name="interest"
+            sx={{ minWidth: 200 }}
+            slotProps={decimalSlotProps}
+          />
+        </Stack>
 
-        <DatePicker
-          label="Дата создания"
-          format="DD.MM.YYYY"
-          defaultValue={dayjs()}
-          disableFuture
-          name="createdDate"
-          slotProps={{ textField: { required: true, InputLabelProps: { shrink: true } } }}
-        />
+        <Divider>
+          <Typography variant="caption" color="text.secondary">
+            Даты
+          </Typography>
+        </Divider>
 
-        <DatePicker
-          label="Дата закрытия"
-          format="DD.MM.YYYY"
-          name="closedDate"
-          slotProps={{ textField: { InputLabelProps: { shrink: true } } }}
-        />
+        {/* Группа 2: даты */}
+        <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
+          <DatePicker
+            label="Дата открытия"
+            format="DD.MM.YYYY"
+            defaultValue={dayjs()}
+            disableFuture
+            name="createdDate"
+            slotProps={{
+              textField: { required: true, InputLabelProps: { shrink: true } },
+            }}
+          />
 
-        <DatePicker
-          label="Последний платёж"
-          format="DD.MM.YYYY"
-          name="lastPaymentDate"
-          slotProps={{ textField: { InputLabelProps: { shrink: true } } }}
-        />
+          <DatePicker
+            label="Следующий платёж"
+            format="DD.MM.YYYY"
+            name="nextPaymentDate"
+            defaultValue={dayjs().add(32, "day")}
+            slotProps={{
+              textField: { required: true, InputLabelProps: { shrink: true } },
+            }}
+          />
 
-        <DatePicker
-          label="Следующий платёж"
-          format="DD.MM.YYYY"
-          name="nextPaymentDate"
-          defaultValue={dayjs().add(32, "day")}
-          slotProps={{ textField: { required: true, InputLabelProps: { shrink: true } } }}
-        />
+          <DatePicker
+            label="Последний платёж"
+            format="DD.MM.YYYY"
+            name="lastPaymentDate"
+            slotProps={{
+              textField: { InputLabelProps: { shrink: true } },
+            }}
+          />
 
-        <Button type="submit" variant="contained" disableElevation>
-          Добавить
-        </Button>
+          <DatePicker
+            label="Дата закрытия"
+            format="DD.MM.YYYY"
+            name="closedDate"
+            slotProps={{
+              textField: { InputLabelProps: { shrink: true } },
+            }}
+          />
+        </Stack>
+
+        <Box>
+          <Button type="submit" variant="contained" disableElevation>
+            Добавить должника
+          </Button>
+        </Box>
       </Stack>
     </Box>
   );

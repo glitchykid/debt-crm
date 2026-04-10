@@ -1,28 +1,55 @@
 "use client";
 
-import { useEffect, useState, useTransition, useCallback, MutableRefObject } from "react";
-import { DataGrid, GridColDef, GridActionsCellItem, GridActionsCell } from "@mui/x-data-grid";
-import { Box } from "@mui/material";
+import {
+  useEffect,
+  useState,
+  useTransition,
+  useCallback,
+  MutableRefObject,
+} from "react";
+import {
+  DataGrid,
+  GridColDef,
+  GridActionsCellItem,
+  GridActionsCell,
+  GridRenderCellParams,
+} from "@mui/x-data-grid";
+import { Box, Chip } from "@mui/material";
 import { deleteDebtorAction, fetchDebtorsAction } from "@/actions/debtors";
 import { type Debtor } from "@/lib/db/schema";
 import DeleteIcon from "@mui/icons-material/Delete";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { useSnackbar } from "notistack";
-
-const BASE_COLUMNS: GridColDef<Debtor>[] = [
-  { field: "fullname", headerName: "ФИО", width: 300 },
-  { field: "status", headerName: "Статус", flex: 1 },
-  { field: "principal", headerName: "Сумма", flex: 1 },
-  { field: "last_payment_date", headerName: "Последний платёж", flex: 1 },
-  { field: "next_payment_date", headerName: "Следующий платёж", flex: 1 },
-  { field: "created_date", headerName: "Дата создания", flex: 1 },
-  { field: "closed_date", headerName: "Дата закрытия", flex: 1 },
-];
+import dayjs from "dayjs";
 
 interface DebtorsDataGridProps {
-  /** Родитель передаёт ref, чтобы вызвать reload() извне */
   onReloadRef?: MutableRefObject<(() => void) | null>;
 }
+
+// Сумма накопленных простых процентов
+function calcAccruedInterest(debtor: Debtor): number {
+  const rate = parseFloat(debtor.interest ?? "0");
+  const principal = parseFloat(debtor.principal);
+  if (!rate || !principal || !debtor.created_date) return 0;
+  const days = dayjs().diff(dayjs(debtor.created_date), "day");
+  return principal * (rate / 100) * (days / 365);
+}
+
+function fmtMoney(n: number): string {
+  return n.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function fmtDate(s: string | null): string {
+  if (!s) return "—";
+  return dayjs(s).format("DD.MM.YYYY");
+}
+
+const STATUS_COLOR: Record<string, "success" | "warning" | "error" | "default"> = {
+  Активен: "success",
+  "Передан в суд": "error",
+  Просрочен: "warning",
+  Закрыт: "default",
+};
 
 export function DebtorsDataGrid({ onReloadRef }: DebtorsDataGridProps) {
   const { enqueueSnackbar } = useSnackbar();
@@ -46,17 +73,12 @@ export function DebtorsDataGrid({ onReloadRef }: DebtorsDataGridProps) {
     void loadData();
   }, [loadData]);
 
-  // Пробрасываем reload наружу через ref
   useEffect(() => {
-    if (onReloadRef) {
-      onReloadRef.current = loadData;
-    }
+    if (onReloadRef) onReloadRef.current = loadData;
   }, [onReloadRef, loadData]);
 
   const handleDeleteClick = (id: number) => () => {
-    const isConfirmed = window.confirm("Вы уверены, что хотите удалить этого должника?");
-    if (!isConfirmed) return;
-
+    if (!window.confirm("Удалить должника?")) return;
     startTransition(async () => {
       setLoading(true);
       const result = await deleteDebtorAction(id);
@@ -65,45 +87,94 @@ export function DebtorsDataGrid({ onReloadRef }: DebtorsDataGridProps) {
         setLoading(false);
         return;
       }
-      enqueueSnackbar("Должник успешно удалён!", { variant: "success" });
+      enqueueSnackbar("Должник удалён", { variant: "success" });
       await loadData();
     });
   };
 
-  const handleOpenClick = (id: number) => () => {
-    window.open(`/debtors/${id}`, "_blank", "noopener,noreferrer");
-  };
-
-  const actionColumn: GridColDef<Debtor> = {
-    field: "actions",
-    type: "actions",
-    headerName: "Действия",
-    width: 100,
-    sortable: false,
-    filterable: false,
-    renderCell: (params) => (
-      <GridActionsCell {...params}>
-        <GridActionsCellItem
-          icon={<OpenInNewIcon />}
-          label="Открыть"
-          onClick={handleOpenClick(params.row.id)}
+  const columns: GridColDef<Debtor>[] = [
+    {
+      field: "fullname",
+      headerName: "ФИО",
+      width: 220,
+      minWidth: 160,
+    },
+    {
+      field: "status",
+      headerName: "Статус",
+      width: 140,
+      renderCell: (params: GridRenderCellParams<Debtor>) => (
+        <Chip
+          label={params.value as string}
+          color={STATUS_COLOR[params.value as string] ?? "default"}
+          size="small"
+          variant="outlined"
         />
-        <GridActionsCellItem
-          icon={<DeleteIcon color="error" />}
-          label="Удалить"
-          onClick={handleDeleteClick(params.row.id)}
-        />
-      </GridActionsCell>
-    ),
-  };
+      ),
+    },
+    {
+      field: "principal",
+      headerName: "Основной долг",
+      width: 150,
+      type: "number",
+      valueFormatter: (value) => fmtMoney(parseFloat(value as string)),
+    },
+    {
+      field: "_accrued",
+      headerName: "Накоплено %",
+      width: 140,
+      type: "number",
+      sortable: false,
+      valueGetter: (_value, row) => calcAccruedInterest(row),
+      valueFormatter: (value) => fmtMoney(value as number),
+    },
+    {
+      field: "_total",
+      headerName: "Итого (долг + %)",
+      width: 160,
+      type: "number",
+      sortable: false,
+      valueGetter: (_value, row) =>
+        parseFloat(row.principal) + calcAccruedInterest(row),
+      valueFormatter: (value) => fmtMoney(value as number),
+    },
+    {
+      field: "next_payment_date",
+      headerName: "Следующий платёж",
+      width: 160,
+      valueFormatter: (value) => fmtDate(value as string),
+    },
+    {
+      field: "actions",
+      type: "actions",
+      headerName: "Действия",
+      width: 90,
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => (
+        <GridActionsCell {...params}>
+          <GridActionsCellItem
+            icon={<OpenInNewIcon fontSize="small" />}
+            label="Открыть"
+            onClick={() => window.open(`/debtors/${params.row.id}`, "_blank", "noopener,noreferrer")}
+          />
+          <GridActionsCellItem
+            icon={<DeleteIcon fontSize="small" color="error" />}
+            label="Удалить"
+            onClick={handleDeleteClick(params.row.id)}
+          />
+        </GridActionsCell>
+      ),
+    },
+  ];
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+    <Box sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
       <DataGrid
         disableRowSelectionOnClick
         loading={loading}
         rows={rows}
-        columns={[...BASE_COLUMNS, actionColumn]}
+        columns={columns}
         disableColumnMenu
         disableColumnResize
         sx={{ border: 0, flex: 1 }}

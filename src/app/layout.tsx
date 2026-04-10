@@ -23,7 +23,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru" suppressHydrationWarning>
-      <body className={`${jost.variable} antialiased`}>
+      <body
+        className={`${jost.variable} antialiased`}
+        style={{ margin: 0, height: "100dvh", display: "flex", flexDirection: "column" }}
+      >
         <InitColorSchemeScript attribute="class" />
         <Providers>{children}</Providers>
       </body>

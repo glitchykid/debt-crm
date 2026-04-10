@@ -7,7 +7,7 @@ import {
   deleteDebtorById,
   getDebtorById,
 } from "@/lib/db/queries/debtors";
-import { createDebtorSchema, toDbDate } from "@/lib/validators/debtor";
+import { createDebtorSchema } from "@/lib/validators/debtor";
 
 export type ActionResult<T = undefined> =
   | { success: true; data?: T }
@@ -35,6 +35,7 @@ export async function createDebtorAction(
   const raw = {
     fullname: formData.get("fullname"),
     status: formData.get("status"),
+    // DatePicker передаёт ISO YYYY-MM-DD через FormData name-атрибут
     createdDate: formData.get("createdDate"),
     nextPaymentDate: formData.get("nextPaymentDate"),
     principal: formData.get("principal"),
@@ -64,12 +65,12 @@ export async function createDebtorAction(
     await createDebtor({
       fullname,
       status,
-      created_date: toDbDate(createdDate),
-      next_payment_date: toDbDate(nextPaymentDate),
+      created_date: createdDate,
+      next_payment_date: nextPaymentDate,
       principal,
       interest: interest && interest !== "" ? interest : null,
-      closed_date: closedDate ? toDbDate(closedDate) : null,
-      last_payment_date: lastPaymentDate ? toDbDate(lastPaymentDate) : null,
+      closed_date: closedDate ?? null,
+      last_payment_date: lastPaymentDate ?? null,
     });
 
     revalidatePath("/");
